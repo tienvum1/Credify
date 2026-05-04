@@ -1,0 +1,201 @@
+.notification-dropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .notification-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #000000;
+    transition: all 0.2s;
+    position: relative;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ff4d4f;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+    }
+  }
+
+  .notif-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    left: auto; // Đảm bảo không bị dính lề trái để có thể đẩy sang trái
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: dropdownFade 0.2s ease-out;
+
+    @keyframes dropdownFade {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .notif-header {
+      padding: 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .mark-all-read {
+        background: none;
+        border: none;
+        color: #1890ff;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .notif-list {
+      max-height: 400px;
+      overflow-y: auto;
+
+      .notif-empty {
+        padding: 32px 16px;
+        text-align: center;
+        color: rgba(0, 0, 0, 0.4);
+        font-size: 14px;
+      }
+
+      .notif-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+        transition: background 0.2s;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        gap: 12px;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.02);
+        }
+
+        &.unread {
+          background: rgba(24, 144, 255, 0.03);
+
+          .notif-title {
+            font-weight: 700;
+          }
+        }
+
+        .notif-link {
+          text-decoration: none;
+          color: inherit;
+          flex: 1;
+        }
+
+        .notif-content {
+          .notif-title {
+            margin: 0 0 4px;
+            font-size: 14px;
+            color: #000;
+          }
+
+          .notif-message {
+            margin: 0 0 6px;
+            font-size: 13px;
+            color: rgba(0, 0, 0, 0.6);
+            line-height: 1.4;
+          }
+
+          .notif-time {
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.35);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+        }
+
+        .unread-dot {
+          width: 8px;
+          height: 8px;
+          background: #1890ff;
+          border-radius: 50%;
+          margin-top: 6px;
+        }
+      }
+    }
+
+    .notif-footer {
+      padding: 12px;
+      text-align: center;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      background: rgba(0, 0, 0, 0.01);
+
+      a {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.5);
+        text-decoration: none;
+        font-weight: 600;
+
+        &:hover {
+          color: #000;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .notif-dropdown {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+  }
+}

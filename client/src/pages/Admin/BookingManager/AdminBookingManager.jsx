@@ -1,0 +1,363 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  BarChart3, Clock, CheckCircle2,
+  XCircle, UserPlus, Users, Search, Eye
+} from 'lucide-react';
+import api from '../../../api/axios';
+import './AdminBookingManager.scss';
+
+const AdminBookingManager = () => {
+  const navigate = useNavigate();
+  const [bookings, setBookings] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending_claim: 0,
+    processing: 0,
+    completed: 0,
+    rejected: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const dateOptions = [
+    { label: 'Tất cả thời gian', value: 'all' },
+    { label: 'Hôm nay', value: 'today' },
+    { label: '7 ngày qua', value: '7days' },
+    { label: '30 ngày qua', value: '30days' },
+  ];
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/bookings/staff/stats'); // Sử dụng chung API stats của staff
+      setStats(res.data);
+    } catch (err) {
+      console.error('Lỗi lấy thống kê:', err);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      // Admin lấy toàn bộ đơn hàng
+      const res = await api.get('/bookings/staff', { 
+        params: statusFilter === 'all' ? {} : { status: statusFilter } 
+      });
+      setBookings(res.data);
+    } catch (err) {
+      console.error('Lỗi lấy danh sách đơn:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchStats(), fetchBookings()]);
+      setLoading(false);
+    };
+    loadData();
+  }, [statusFilter]);
+
+  const formatMoney = (value) => {
+    const n = Math.round(Number(value));
+    if (Number.isNaN(n)) return '—';
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  };
+
+  const statusLabel = (status) => {
+    if (status === 'created') return 'Mới tạo';
+    if (status === 'customer_paid') return 'Khách đã thanh toán';
+    if (status === 'staff_confirmed' || status === 'completed') return 'Hoàn thành';
+    if (status === 'rejected') return 'Đã từ chối';
+    if (status === 'cancelled') return 'Đã hủy';
+    return status;
+  };
+
+  const shortCode = (code) => {
+    const raw = String(code || '');
+    return raw.length <= 6 ? raw : raw.slice(-6);
+  };
+
+  const filtered = bookings
+    .filter((b) => {
+      const key = `${b.code} ${b.customer_name || ''} ${b.customer_email || ''}`.toLowerCase();
+      const matchesSearch = key.includes(searchTerm.trim().toLowerCase());
+      
+      let matchesDate = true;
+      if (dateFilter !== 'all') {
+        const bDate = new Date(b.created_at);
+        const now = new Date();
+        
+        // Chuyển đổi sang ngày theo múi giờ VN (YYYY-MM-DD)
+        const toVNTS = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+        const bDateStr = toVNTS(bDate);
+        const todayStr = toVNTS(now);
+        
+        if (dateFilter === 'today') {
+          matchesDate = bDateStr === todayStr;
+        } else if (dateFilter === '7days') {
+          const sevenDaysAgo = new Date(now);
+          sevenDaysAgo.setDate(now.getDate() - 7);
+          matchesDate = bDate >= sevenDaysAgo;
+        } else if (dateFilter === '30days') {
+          const thirtyDaysAgo = new Date(now);
+          thirtyDaysAgo.setDate(now.getDate() - 30);
+          matchesDate = bDate >= thirtyDaysAgo;
+        }
+      }
+
+      return matchesSearch && matchesDate;
+    })
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo(0, 0);
+  };
+
+  if (loading) return <div className="loading">Đang tải dữ liệu hệ thống...</div>;
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return (
+      <div className="pagination">
+        <button
+          type="button"
+          className="page-btn"
+          disabled={currentPage === 1}
+          onClick={() => handlePageChange(currentPage - 1)}
+        >
+          Trước
+        </button>
+
+        {start > 1 && (
+          <>
+            <button type="button" className="page-btn" onClick={() => handlePageChange(1)}>1</button>
+            {start > 2 && <span className="page-ellipsis">...</span>}
+          </>
+        )}
+
+        {pages.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={`page-btn ${currentPage === p ? 'active' : ''}`}
+            onClick={() => handlePageChange(p)}
+          >
+            {p}
+          </button>
+        ))}
+
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <span className="page-ellipsis">...</span>}
+            <button type="button" className="page-btn" onClick={() => handlePageChange(totalPages)}>{totalPages}</button>
+          </>
+        )}
+
+        <button
+          type="button"
+          className="page-btn"
+          disabled={currentPage === totalPages}
+          onClick={() => handlePageChange(currentPage + 1)}
+        >
+          Sau
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="admin-booking-page">
+      {/* Dashboard Section */}
+      <div className="stats-grid">
+        <div className="stat-card total">
+          <div className="stat-icon"><BarChart3 size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Tổng đơn hệ thống</span>
+            <span className="stat-value">{stats.total}</span>
+          </div>
+        </div>
+        <div className="stat-card pending">
+          <div className="stat-icon"><UserPlus size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Đơn chưa nhận</span>
+            <span className="stat-value">{stats.pending_claim}</span>
+          </div>
+        </div>
+        <div className="stat-card processing">
+          <div className="stat-icon"><Clock size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Đang xử lý</span>
+            <span className="stat-value">{stats.processing}</span>
+          </div>
+        </div>
+        <div className="stat-card completed">
+          <div className="stat-icon"><CheckCircle2 size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Đã hoàn thành</span>
+            <span className="stat-value">{stats.completed}</span>
+          </div>
+        </div>
+        <div className="stat-card rejected">
+          <div className="stat-icon"><XCircle size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Bị từ chối</span>
+            <span className="stat-value">{stats.rejected}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="booking-toolbar">
+        <div className="booking-title">
+          <h1>Quản lý đơn hàng toàn hệ thống</h1>
+          <p>Admin có quyền xem và theo dõi tất cả giao dịch</p>
+        </div>
+
+        <div className="booking-controls">
+          <div className="search-box">
+            <Search size={18} />
+            <input
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Mã đơn, tên khách..."
+            />
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setLoading(true);
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="customer_paid">Khách đã thanh toán</option>
+            <option value="staff_confirmed">Hoàn thành</option>
+            <option value="created">Mới tạo</option>
+            <option value="rejected">Đã từ chối</option>
+            <option value="cancelled">Đã hủy</option>
+          </select>
+
+          <select
+            value={dateFilter}
+            onChange={(e) => {
+              setDateFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            {dateOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="table-shell">
+        <table className="booking-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th className="th-code">Mã đơn</th>
+              <th>Khách hàng</th>
+              <th className="th-money">Tiền chuyển</th>
+              <th>Nhân viên xử lý</th>
+              <th className="th-status">Trạng thái</th>
+              <th className="th-date">Thời gian</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentItems.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="empty">Không có dữ liệu đơn hàng.</td>
+              </tr>
+            ) : (
+              currentItems.map((b) => (
+                <tr key={b.id}>
+                  <td data-label="ID">#{b.id}</td>
+                  <td data-label="Mã đơn" className="th-code"><span className="mono">{shortCode(b.code)}</span></td>
+                  <td data-label="Khách hàng">
+                    <div className="customer-cell">
+                      <span className="name">{b.customer_name}</span>
+                      <span className="email">{b.customer_email}</span>
+                      <span className="phone">{b.customer_phone || 'Chưa cập nhật'}</span>
+                    </div>
+                  </td>
+                  <td data-label="Tiền chuyển" className="td-money">
+                    <span className="money-value">{formatMoney(b.transfer_amount)}</span>
+                  </td>
+                  <td data-label="Nhân viên">
+                    {b.staff_id ? (
+                      <div className="staff-cell">
+                        <Users size={14} />
+                        <span>{b.staff_name || `ID: ${b.staff_id}`}</span>
+                      </div>
+                    ) : (
+                      <span className="no-staff">Chưa có</span>
+                    )}
+                  </td>
+                  <td data-label="Trạng thái" className="th-status">
+                    <span className={`status-badge ${b.status}`}>{statusLabel(b.status)}</span>
+                  </td>
+                  <td data-label="Thời gian" className="td-date">
+                    <div className="date-cell">
+                      <span>{formatDateTime(b.created_at)}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      <button className="detail-view-btn" onClick={() => navigate(`/admin/bookings/${b.id}`)}>
+                        <Eye size={16} />
+                        <span>Chi tiết</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {renderPagination()}
+    </div>
+  );
+};
+
+export default AdminBookingManager;

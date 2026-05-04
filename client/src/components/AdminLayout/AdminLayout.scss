@@ -1,0 +1,61 @@
+.admin-layout {
+  display: flex;
+  background: #f1f5f9;
+  min-height: 100vh;
+  position: relative;
+
+  .admin-main {
+    flex: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    min-width: 0; // Quan trọng để ngăn tràn layout
+
+    .admin-content {
+      padding: 24px;
+      width: 100%;
+      margin: 0;
+      box-sizing: border-box;
+
+      @media (max-width: 768px) {
+        padding: 16px;
+        padding-top: 70px; // Chừa chỗ cho mobile toggle
+      }
+    }
+  }
+
+  .mobile-sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    width: 40px;
+    height: 40px;
+    background: #1e293b;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    @media (max-width: 992px) {
+      display: flex;
+    }
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 99;
+
+    @media (max-width: 992px) {
+      display: block;
+    }
+  }
+}
