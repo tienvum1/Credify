@@ -30,8 +30,11 @@ if (!fs.existsSync(uploadDir)) {
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // URL của Frontend
-  credentials: true // Cho phép gửi cookie qua CORS
+  origin: [
+    'http://localhost:5173',
+    'https://credify-awqh.vercel.app'
+  ],
+  credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser()); // Sử dụng cookie-parser
