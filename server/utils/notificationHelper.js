@@ -2,24 +2,17 @@ const pool = require("../config/db").pool;
 const nodemailer = require('nodemailer');
 
 /**
- * Cấu hình transporter cho việc gửi email tối ưu cho Cloud
+ * Cấu hình transporter cho việc gửi email qua Gmail SMTP (Vercel compatible)
  */
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
-  family: 4
-});
+const getTransporter = () => {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+};
 
 /**
  * Gửi email thông báo đơn hàng
@@ -78,15 +71,16 @@ const sendBookingEmail = async (email, subject, booking, type, extraInfo = '') =
   `;
 
   try {
+    const transporter = getTransporter();
     const info = await transporter.sendMail({
       from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `[Credify] ${subject} - #${shortCode}`,
       html: html
     });
-    console.log(`Email thông báo (${type}) đã gửi tới ${email}:`, info.messageId);
+    console.log(`Email thông báo (${type}) đã gửi tới ${email} qua Gmail:`, info.messageId);
   } catch (err) {
-    console.error(`LỖI GỬI EMAIL THÔNG BÁO (${type}):`, err.message);
+    console.error(`LỖI GỬI EMAIL THÔNG BÁO (${type}) qua Gmail:`, err.message);
   }
 };
 

@@ -8,99 +8,55 @@ const nodemailer = require('nodemailer');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Cấu hình cookie options linh hoạt cho production (Vercel/Render) và local
+// Cấu hình cookie options linh hoạt
 const isProduction = process.env.NODE_ENV === 'production';
-
 const cookieOptions = {
-  httpOnly: true, // Chỉ server mới đọc được, chống XSS
-  secure: true,   // Luôn để true nếu dùng sameSite: 'none' (Render/Vercel hỗ trợ HTTPS)
-  sameSite: 'none', // Bắt buộc 'none' để gửi cookie giữa các domain khác nhau
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
+  httpOnly: true,
+  secure: true,
+  sameSite: 'none',
+  maxAge: 7 * 24 * 60 * 60 * 1000
 };
 
-// Nếu chạy local (không có HTTPS), điều chỉnh để cookie vẫn hoạt động
 if (!isProduction) {
   cookieOptions.secure = false;
   cookieOptions.sameSite = 'lax';
 }
 
-// Cấu hình Mail Transporter tối ưu cho Cloud (Render/Vercel)
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Bắt buộc true cho cổng 465
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
-  family: 4 // Ép buộc sử dụng IPv4
-});
-
-// Kiểm tra cấu hình email ngay khi khởi động
-if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-  console.warn('CẢNH BÁO: EMAIL_USER hoặc EMAIL_PASS chưa được cấu hình trong .env. Tính năng gửi mail sẽ không hoạt động.');
-} else {
-  // Xác thực kết nối SMTP
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error('Lỗi kết nối SMTP (Email):', error);
-    } else {
-      console.log('Hệ thống Email đã sẵn sàng gửi thư.');
+// Cấu hình Transporter cho Vercel/Render (Chỉ khởi tạo khi cần)
+const getTransporter = () => {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
     }
   });
-}
+};
 
 // Test gửi email để debug
 const testEmail = async (req, res) => {
   const testEmail = req.query.email || process.env.EMAIL_USER;
   
   if (!testEmail) {
-    return res.status(400).json({ message: 'Vui lòng cung cấp email để test (?email=...)' });
+    return res.status(400).json({ message: 'Vui lòng cung cấp email (?email=...)' });
   }
 
-  const mailOptions = {
-    from: `"Credify Test" <${process.env.EMAIL_USER}>`,
-    to: testEmail,
-    subject: 'Test Email System',
-    text: 'Đây là email kiểm tra hệ thống. Nếu bạn nhận được thư này, cấu hình email của bạn đã chính xác!'
-  };
-
   try {
-    console.log(`Đang bắt đầu test email tới: ${testEmail}...`);
-    
-    // Gửi thẳng mail, nodemailer sẽ tự quản lý kết nối và timeout
-    console.log('Đang thực hiện gửi email thử nghiệm...');
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Gửi email thành công:', info.messageId);
-    
-    res.json({
-      status: 'success',
-      message: `Đã gửi email test tới ${testEmail}`,
-      info: {
-        messageId: info.messageId,
-        response: info.response
-      }
+    const transporter = getTransporter();
+    const info = await transporter.sendMail({
+      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
+      to: testEmail,
+      subject: 'Test Email (Gmail SMTP)',
+      text: 'Nếu bạn thấy thư này, Gmail SMTP đã hoạt động trên Vercel!'
     });
+    res.json({ status: 'success', message: `Đã gửi tới ${testEmail}`, messageId: info.messageId });
   } catch (error) {
-    console.error('LỖI TEST EMAIL:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Gửi email test thất bại',
-      error: error.message,
-      code: error.code,
-      config: {
-        user: process.env.EMAIL_USER,
-        host: 'smtp.gmail.com',
-        port: 465,
-        family: 4,
-        secure: true
-      }
+    console.error('LỖI GỬI MAIL:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Gửi mail thất bại', 
+      details: error.message,
+      hint: 'Nếu chạy trên Vercel/Render, có thể cổng SMTP đã bị chặn.'
     });
   }
 };
@@ -147,8 +103,9 @@ const register = async (req, res) => {
     // Gửi email xác nhận
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email/${verificationToken}`;
 
-    const mailOptions = {
-      from: `"Credify" <${process.env.EMAIL_USER}>`,
+    const transporter = getTransporter();
+    transporter.sendMail({
+      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Xác nhận đăng ký tài khoản',
       html: `
@@ -160,23 +117,11 @@ const register = async (req, res) => {
           </div>
           <p style="color: #64748b; font-size: 14px;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify. All rights reserved.</p>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
         </div>
       `
-    };
-
-    // Gửi email không chặn (Asynchronous) để tránh timeout 502/504
-    transporter.sendMail(mailOptions)
-      .then(info => console.log("Email xác nhận đã gửi:", info.messageId))
-      .catch(err => {
-        console.error("LỖI GỬI MAIL XÁC NHẬN:");
-        console.error("Chi tiết lỗi:", err.message);
-        console.error("Mã lỗi:", err.code);
-        console.error("Cấu hình hiện tại:", {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS ? '********' : 'Trống'
-        });
-      });
+    }).then(info => console.log("Email xác nhận đã gửi:", info.messageId))
+      .catch(err => console.error("LỖI GỬI MAIL XÁC NHẬN:", err.message));
 
     res.status(201).json({ message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' });
   } catch (err) {
@@ -330,7 +275,8 @@ const forgotPassword = async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}`;
     
     // Gửi email khôi phục mật khẩu
-    const mailOptions = {
+    const transporter = getTransporter();
+    transporter.sendMail({
       from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Khôi phục mật khẩu',
@@ -347,20 +293,8 @@ const forgotPassword = async (req, res) => {
           <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
         </div>
       `
-    };
-
-    // Gửi email không chặn (Asynchronous) để tránh timeout 502/504
-    transporter.sendMail(mailOptions)
-      .then(info => console.log("Email khôi phục đã gửi:", info.messageId))
-      .catch(err => {
-        console.error("LỖI GỬI MAIL KHÔI PHỤC:");
-        console.error("Chi tiết lỗi:", err.message);
-        console.error("Mã lỗi:", err.code);
-        console.error("Cấu hình hiện tại:", {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS ? '********' : 'Trống'
-        });
-      });
+    }).then(info => console.log("Email khôi phục đã gửi:", info.messageId))
+      .catch(err => console.error("LỖI GỬI MAIL KHÔI PHỤC:", err.message));
 
     res.json({ message: 'Link khôi phục mật khẩu đã được gửi vào email của bạn.' });
   } catch (err) {
