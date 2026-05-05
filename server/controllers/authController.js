@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../utils/sendEmail');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -22,32 +22,20 @@ if (!isProduction) {
   cookieOptions.sameSite = 'lax';
 }
 
-// Cấu hình Transporter cho Vercel/Render (Chỉ khởi tạo khi cần)
-const getTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-};
-
 // Test gửi email để debug
 const testEmail = async (req, res) => {
   const testEmail = req.query.email || process.env.EMAIL_USER;
+  console.log('testEmail:', testEmail);
   
   if (!testEmail) {
     return res.status(400).json({ message: 'Vui lòng cung cấp email (?email=...)' });
   }
 
   try {
-    const transporter = getTransporter();
-    const info = await transporter.sendMail({
-      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
+    const info = await sendEmail({
       to: testEmail,
       subject: 'Test Email (Gmail SMTP)',
-      text: 'Nếu bạn thấy thư này, Gmail SMTP đã hoạt động trên Vercel!'
+      html: 'Nếu bạn thấy thư này, Gmail SMTP đã hoạt động trên Vercel!'
     });
     res.json({ status: 'success', message: `Đã gửi tới ${testEmail}`, messageId: info.messageId });
   } catch (error) {
@@ -103,9 +91,7 @@ const register = async (req, res) => {
     // Gửi email xác nhận
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email/${verificationToken}`;
 
-    const transporter = getTransporter();
-    transporter.sendMail({
-      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
+    sendEmail({
       to: email,
       subject: 'Xác nhận đăng ký tài khoản',
       html: `
@@ -275,9 +261,7 @@ const forgotPassword = async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}`;
     
     // Gửi email khôi phục mật khẩu
-    const transporter = getTransporter();
-    transporter.sendMail({
-      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
+    sendEmail({
       to: email,
       subject: 'Khôi phục mật khẩu',
       html: `

@@ -1,24 +1,11 @@
 const pool = require("../config/db").pool;
-const nodemailer = require('nodemailer');
-
-/**
- * Cấu hình transporter cho việc gửi email qua Gmail SMTP (Vercel compatible)
- */
-const getTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-};
+const { sendEmail } = require("./sendEmail");
 
 /**
  * Gửi email thông báo đơn hàng
  */
 const sendBookingEmail = async (email, subject, booking, type, extraInfo = '') => {
-  if (!email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!email || (!process.env.EMAIL_USER && !process.env.GMAIL_USER) || (!process.env.EMAIL_PASS && !process.env.GMAIL_APP_PASSWORD)) return;
 
   const shortCode = booking.code.slice(-6);
   const amountStr = Math.round(booking.transfer_amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -71,9 +58,7 @@ const sendBookingEmail = async (email, subject, booking, type, extraInfo = '') =
   `;
 
   try {
-    const transporter = getTransporter();
-    const info = await transporter.sendMail({
-      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
+    const info = await sendEmail({
       to: email,
       subject: `[Credify] ${subject} - #${shortCode}`,
       html: html
