@@ -53,6 +53,53 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   });
 }
 
+// Test gửi email để debug
+exports.testEmail = async (req, res) => {
+  const testEmail = req.query.email || process.env.EMAIL_USER;
+  
+  if (!testEmail) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email để test (?email=...)' });
+  }
+
+  const mailOptions = {
+    from: `"Credify Test" <${process.env.EMAIL_USER}>`,
+    to: testEmail,
+    subject: 'Test Email System',
+    text: 'Đây là email kiểm tra hệ thống. Nếu bạn nhận được thư này, cấu hình email của bạn đã chính xác!'
+  };
+
+  try {
+    // Kiểm tra kết nối trước
+    await transporter.verify();
+    
+    // Thử gửi mail
+    const info = await transporter.sendMail(mailOptions);
+    
+    res.json({
+      status: 'success',
+      message: `Đã gửi email test tới ${testEmail}`,
+      info: {
+        messageId: info.messageId,
+        response: info.response
+      }
+    });
+  } catch (error) {
+    console.error('LỖI TEST EMAIL:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Gửi email test thất bại',
+      error: error.message,
+      code: error.code,
+      command: error.command,
+      config: {
+        user: process.env.EMAIL_USER,
+        host: 'smtp.gmail.com',
+        port: 465
+      }
+    });
+  }
+};
+
 // Helper tạo token và gửi cookie
 const sendTokenResponse = (user, statusCode, res) => {
   const token = jwt.sign(
