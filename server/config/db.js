@@ -91,42 +91,55 @@ const initDB = async () => {
       await connection.query("ALTER TABLE qrs DROP COLUMN image_url");
     }
 
-    // Tạo bảng bookings (đơn)
+    // Tạo bảng credit_cards (Phiên bản quản lý độc lập)
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS credit_cards (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_name VARCHAR(255) NOT NULL,
+        bank_name VARCHAR(100) NOT NULL,
+        card_last_4 VARCHAR(10) NOT NULL,
+        credit_limit DECIMAL(15, 2) DEFAULT 0,
+        roll_amount DECIMAL(15, 2) DEFAULT 0,
+        fee_percent DECIMAL(5, 2) DEFAULT 0,
+        bank_fee_percent DECIMAL(5, 2) DEFAULT 0,
+        statement_date DATE NULL,
+        due_date DATE NULL,
+        roll_date DATE NULL,
+        status VARCHAR(50) DEFAULT 'An toàn',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_cc_status (status),
+        INDEX idx_cc_created (created_at)
+      )
+    `);
+
+    // Tạo bảng bookings (Tối ưu hóa Index)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        code VARCHAR(40) NOT NULL UNIQUE,
-        qr_id INT NOT NULL,
         customer_id INT NOT NULL,
-        staff_id INT NULL,
-
-        customer_bank_name VARCHAR(120) NOT NULL,
-        customer_account_number VARCHAR(60) NOT NULL,
-        customer_account_holder VARCHAR(255) NOT NULL,
-
+        qr_id INT NOT NULL,
+        staff_id INT DEFAULT NULL,
+        code VARCHAR(50) NOT NULL,
         transfer_amount DECIMAL(15, 2) NOT NULL,
         fee_rate DECIMAL(5, 2) NOT NULL,
         fee_amount DECIMAL(15, 2) NOT NULL,
         net_amount DECIMAL(15, 2) NOT NULL,
-
-        customer_paid_proof_url VARCHAR(255) NULL,
-        customer_paid_note TEXT NULL,
-        reject_note TEXT NULL,
-
-        status ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'created',
-
+        status ENUM('created', 'customer_paid', 'staff_confirmed', 'completed', 'rejected', 'cancelled') DEFAULT 'created',
+        customer_paid_proof_urls TEXT,
+        customer_paid_note TEXT,
+        staff_paid_proof_urls TEXT,
+        reject_note TEXT,
         paid_at TIMESTAMP NULL,
         confirmed_at TIMESTAMP NULL,
-
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-        FOREIGN KEY (qr_id) REFERENCES qrs(id) ON DELETE CASCADE,
-        FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (staff_id) REFERENCES users(id) ON DELETE SET NULL,
-
-        INDEX idx_bookings_status_created (status, created_at),
-        INDEX idx_bookings_customer (customer_id, created_at)
+        FOREIGN KEY (customer_id) REFERENCES users(id),
+        FOREIGN KEY (qr_id) REFERENCES qrs(id),
+        FOREIGN KEY (staff_id) REFERENCES users(id),
+        INDEX idx_booking_status (status),
+        INDEX idx_booking_customer (customer_id),
+        INDEX idx_booking_created (created_at)
       )
     `);
 
@@ -144,27 +157,6 @@ const initDB = async () => {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
         INDEX idx_notifications_user (user_id, created_at)
-      )
-    `);
-
-    // Tạo bảng credit_cards
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS credit_cards (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        bank_name VARCHAR(100) NOT NULL,
-        card_number VARCHAR(20) NOT NULL,
-        credit_limit DECIMAL(15, 2) NOT NULL,
-        current_balance DECIMAL(15, 2) DEFAULT 0,
-        statement_date INT NOT NULL COMMENT 'Ngày sao kê hàng tháng (1-31)',
-        due_date INT NOT NULL COMMENT 'Ngày thanh toán hàng tháng (1-31)',
-        minimum_payment DECIMAL(15, 2) DEFAULT 0,
-        status ENUM('active', 'inactive') DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_cc_user (user_id),
-        INDEX idx_cc_due (due_date)
       )
     `);
 

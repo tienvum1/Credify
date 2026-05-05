@@ -28,6 +28,8 @@ const statusLabel = (status) => {
   return status;
 };
 
+const cache = require("../utils/cache");
+
 const enrichBooking = (booking) => {
   const createdAt = new Date(booking.created_at);
   const expiresAt = new Date(createdAt.getTime() + 30 * 60 * 1000);
@@ -158,6 +160,7 @@ const createBooking = async (req, res) => {
       booking: enrichBooking(rows[0]),
       qr: { id: qr.id, qr_image: qr.qr_image },
     });
+    cache.del("staff_stats");
   } catch (err) {
     console.error("Lỗi khi tạo booking:", err);
     res.status(500).json({ message: "Lỗi server khi tạo đơn" });
@@ -250,6 +253,8 @@ const submitCustomerPaid = async (req, res) => {
 
 const getMyBookings = async (req, res) => {
   try {
+    const { page = 1, limit = 10, search = "", status, dateRange = "all" } = req.query;
+    const offset = (page - 1) * limit;
     const requestedCustomerId = Number(req.query.customer_id);
     let customer_id = req.user.id;
 
@@ -266,7 +271,34 @@ const getMyBookings = async (req, res) => {
       customer_id = requestedCustomerId;
     }
 
-    // Lấy thống kê
+    let baseWhereSql = "WHERE b.customer_id = ?";
+    const baseParams = [customer_id];
+
+    if (search) {
+      baseWhereSql += " AND (b.code LIKE ?)";
+      baseParams.push(`%${search}%`);
+    }
+
+    if (dateRange !== "all") {
+      if (dateRange === "today") {
+        baseWhereSql += " AND DATE(CONVERT_TZ(b.created_at, '+00:00', '+07:00')) = DATE(CONVERT_TZ(NOW(), '+00:00', '+07:00'))";
+      } else if (dateRange === "7days") {
+        baseWhereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+      } else if (dateRange === "30days") {
+        baseWhereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+      }
+    }
+
+    // whereSql dùng cho danh sách (bao gồm lọc trạng thái)
+    let listWhereSql = baseWhereSql;
+    const listParams = [...baseParams];
+
+    if (status && status !== "all") {
+      listWhereSql += " AND b.status = ?";
+      listParams.push(status);
+    }
+
+    // Lấy thống kê (Stats phản ánh bộ lọc thời gian và tìm kiếm, không lọc theo status)
     const [stats] = await pool.query(
       `
       SELECT 
@@ -277,22 +309,31 @@ const getMyBookings = async (req, res) => {
         COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_count,
         COUNT(CASE WHEN status IN ('created', 'customer_paid') THEN 1 END) as pending_count
-      FROM bookings 
-      WHERE customer_id = ?
+      FROM bookings b
+      ${baseWhereSql}
       `,
-      [customer_id]
+      baseParams
     );
 
-    // Lấy danh sách đơn hàng
+    // Lấy tổng số để phân trang (theo listWhereSql)
+    const [totalRows] = await pool.query(
+      `SELECT COUNT(*) as total FROM bookings b ${listWhereSql}`,
+      listParams
+    );
+    const total = totalRows[0].total;
+
+    // Lấy danh sách đơn hàng có giới hạn
+    const queryParams = [...listParams, parseInt(limit), parseInt(offset)];
     const [rows] = await pool.query(
       `
         SELECT b.*, q.main_image as qr_main_image, q.qr_image
         FROM bookings b
         JOIN qrs q ON q.id = b.qr_id
-        WHERE b.customer_id = ?
+        ${listWhereSql}
         ORDER BY b.created_at DESC
+        LIMIT ? OFFSET ?
       `,
-      [customer_id]
+      queryParams
     );
 
     const enrichedRows = rows.map(b => {
@@ -335,6 +376,10 @@ const getMyBookings = async (req, res) => {
 
     res.json({
       stats: stats[0],
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit),
       bookings: enrichedRows
     });
   } catch (err) {
@@ -408,19 +453,52 @@ const getMyBookingDetail = async (req, res) => {
 
 const getStaffStats = async (req, res) => {
   try {
+    const { dateRange = "all", search = "" } = req.query;
+    
+    // Tạo cache key dựa trên bộ lọc
+    const cacheKey = `staff_stats_${dateRange}_${search}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) return res.json(cachedData);
+
+    let whereSql = "WHERE 1=1";
+    const params = [];
+
+    if (search) {
+      whereSql += " AND (b.code LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)";
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    if (dateRange !== "all") {
+      if (dateRange === "today") {
+        whereSql += " AND DATE(CONVERT_TZ(b.created_at, '+00:00', '+07:00')) = DATE(CONVERT_TZ(NOW(), '+00:00', '+07:00'))";
+      } else if (dateRange === "7days") {
+        whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+      } else if (dateRange === "30days") {
+        whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+      }
+    }
+
     const [rows] = await pool.query(`
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN status IN ('created', 'customer_paid') AND staff_id IS NULL THEN 1 END) as pending_claim,
-        COUNT(CASE WHEN status IN ('created', 'customer_paid') AND staff_id IS NOT NULL THEN 1 END) as processing,
-        COUNT(CASE WHEN status IN ('staff_confirmed', 'completed') THEN 1 END) as completed,
-        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
-      FROM bookings
-    `);
-    res.json(rows[0]);
+        COUNT(CASE WHEN b.status IN ('created', 'customer_paid') AND b.staff_id IS NULL THEN 1 END) as pending_claim,
+        COUNT(CASE WHEN b.status IN ('created', 'customer_paid') AND b.staff_id IS NOT NULL THEN 1 END) as processing,
+        COUNT(CASE WHEN b.status IN ('staff_confirmed', 'completed') THEN 1 END) as completed,
+        COUNT(CASE WHEN b.status = 'rejected' THEN 1 END) as rejected
+      FROM bookings b
+      LEFT JOIN users u ON u.id = b.customer_id
+      ${whereSql}
+    `, params);
+
+    const stats = rows[0];
+    // Cache trong 10 giây cho bộ lọc cụ thể
+    cache.set(cacheKey, stats, 10000);
+
+    res.json(stats);
   } catch (err) {
     console.error("Lỗi lấy thống kê staff:", err);
-    res.status(500).json({ message: "Lỗi server" });
+    res.status(500).json({ message: "Lỗi lấy thống kê" });
   }
 };
 
@@ -451,6 +529,7 @@ const claimBooking = async (req, res) => {
     );
 
     res.json({ message: "Đã nhận xử lý đơn hàng thành công" });
+    cache.del("staff_stats");
   } catch (err) {
     console.error("Lỗi nhận xử lý đơn:", err);
     res.status(500).json({ message: "Lỗi server" });
@@ -459,19 +538,46 @@ const claimBooking = async (req, res) => {
 
 const staffGetBookings = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
+    const offset = (page - 1) * limit;
     const params = [];
-    let whereSql = "";
-    if (status) {
+    let whereSql = "WHERE 1=1";
+
+    if (status && status !== "all") {
       if (status === "staff_confirmed") {
-        whereSql = "WHERE b.status IN (?, ?)";
+        whereSql += " AND b.status IN (?, ?)";
         params.push("staff_confirmed", "completed");
       } else {
-        whereSql = "WHERE b.status = ?";
+        whereSql += " AND b.status = ?";
         params.push(status);
       }
     }
 
+    if (search) {
+      whereSql += " AND (b.code LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)";
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    if (dateRange !== "all") {
+      if (dateRange === "today") {
+        whereSql += " AND DATE(CONVERT_TZ(b.created_at, '+00:00', '+07:00')) = DATE(CONVERT_TZ(NOW(), '+00:00', '+07:00'))";
+      } else if (dateRange === "7days") {
+        whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+      } else if (dateRange === "30days") {
+        whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+      }
+    }
+
+    // Lấy tổng số đơn để phân trang
+    const [totalRows] = await pool.query(
+      `SELECT COUNT(*) as total FROM bookings b JOIN users u ON u.id = b.customer_id ${whereSql}`,
+      params
+    );
+    const total = totalRows[0].total;
+
+    // Lấy dữ liệu trang hiện tại
+    const queryParams = [...params, parseInt(limit), parseInt(offset)];
     const [rows] = await pool.query(
       `
         SELECT
@@ -488,10 +594,18 @@ const staffGetBookings = async (req, res) => {
         LEFT JOIN users s ON s.id = b.staff_id
         ${whereSql}
         ORDER BY b.created_at DESC
+        LIMIT ? OFFSET ?
       `,
-      params
+      queryParams
     );
-    res.json(rows.map(enrichBooking));
+
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit),
+      data: rows.map(enrichBooking)
+    });
   } catch (err) {
     console.error("Lỗi khi staff lấy bookings:", err);
     res.status(500).json({ message: "Lỗi server" });
@@ -628,6 +742,7 @@ const staffConfirmBooking = async (req, res) => {
       [bookingId]
     );
     res.json({ message: "Đã chuyển tiền cho khách", booking: enrichBooking(rows[0]) });
+    cache.del("staff_stats");
   } catch (err) {
     console.error("Lỗi staff confirm:", err);
     res.status(500).json({ message: "Lỗi server" });
@@ -693,6 +808,7 @@ const staffRejectBooking = async (req, res) => {
       [bookingId]
     );
     res.json({ message: "Đã từ chối đơn", booking: enrichBooking(rows[0]) });
+    cache.del("staff_stats");
   } catch (err) {
     console.error("Lỗi staff reject:", err);
     res.status(500).json({ message: "Lỗi server" });

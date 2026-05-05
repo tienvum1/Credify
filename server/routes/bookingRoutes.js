@@ -34,7 +34,13 @@ router.get("/staff", protect, authorize("staff"), staffGetBookings);
 router.get("/staff/stats", protect, authorize("staff"), getStaffStats);
 router.get("/staff/:id", protect, authorize("staff"), staffGetBookingDetail);
 router.patch("/:id/claim", protect, authorize("staff"), claimBooking);
-router.patch("/:id/confirm", protect, authorize("staff"), staffConfirmBooking);
+router.patch(
+  "/:id/confirm",
+  protect,
+  authorize("staff"),
+  upload.array("proof", 3),
+  staffConfirmBooking
+);
 router.patch("/:id/reject", protect, authorize("staff"), staffRejectBooking);
 
 module.exports = router;

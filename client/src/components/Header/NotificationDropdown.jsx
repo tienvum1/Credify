@@ -4,13 +4,14 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import './NotificationDropdown.scss';
 
-const NotificationDropdown = () => {
+const NotificationDropdown = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
   const fetchNotifications = async () => {
+    if (!user) return;
     try {
       const [notifRes, countRes] = await Promise.all([
         api.get('/notifications'),
@@ -27,6 +28,7 @@ const NotificationDropdown = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
     const timer = setTimeout(() => {
       fetchNotifications();
     }, 0);
@@ -39,7 +41,7 @@ const NotificationDropdown = () => {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -72,7 +74,17 @@ const NotificationDropdown = () => {
   };
 
   const formatTime = (dateStr) => {
-    const d = new Date(dateStr);
+    if (!dateStr) return '';
+    let d = new Date(dateStr);
+    
+    // Nếu dateStr là string và không có thông tin múi giờ, ta coi nó là UTC (do backend config)
+    if (typeof dateStr === 'string' && !dateStr.includes('Z') && !dateStr.includes('+')) {
+      const utcDate = new Date(dateStr.replace(' ', 'T') + 'Z');
+      if (!isNaN(utcDate.getTime())) d = utcDate;
+    }
+
+    if (isNaN(d.getTime())) return dateStr;
+    
     return d.toLocaleString('vi-VN', { 
       timeZone: 'Asia/Ho_Chi_Minh',
       hour: '2-digit', 
@@ -84,8 +96,13 @@ const NotificationDropdown = () => {
 
   const getLink = (notif) => {
     if (!notif.booking_id) return '#';
-    // Nếu là user hoặc staff thì dẫn tới đúng trang chi tiết
-    // (Thực tế link này có thể cần check role nhưng /my-bookings/:id dùng chung cho user được)
+    
+    // Nếu là staff/admin/accountant thì dẫn tới trang quản lý của staff
+    if (user && ['staff', 'admin_system', 'accountant'].includes(user.role)) {
+      return `/staff/bookings/${notif.booking_id}`;
+    }
+    
+    // Ngược lại dẫn tới trang của khách
     return `/my-bookings/${notif.booking_id}`;
   };
 

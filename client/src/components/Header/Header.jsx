@@ -36,7 +36,7 @@ const Header = ({ user, handleLogout }) => {
         <div className="header-right">
           {user ? (
             <div className="user-actions">
-              <NotificationDropdown />
+              <NotificationDropdown user={user} />
 
               {/* User Avatar & Dropdown - ALWAYS VISIBLE */}
               <div className="user-profile">

@@ -117,7 +117,7 @@ function App() {
           path="/notifications"
           element={
             <AuthRoute user={user}>
-              <Notifications />
+              <Notifications user={user} />
             </AuthRoute>
           }
         />
@@ -159,7 +159,7 @@ function App() {
           path="/staff/notifications"
           element={
             <ProtectedRoute user={user} allowedRoles={['staff']}>
-              <Notifications />
+              <Notifications user={user} />
             </ProtectedRoute>
           }
         />
@@ -170,7 +170,7 @@ function App() {
           <Route path="users" element={<AdminUserManager />} />
           <Route path="bookings" element={<AdminBookingManager />} />
           <Route path="bookings/:id" element={<AdminBookingDetail />} />
-          <Route path="notifications" element={<Notifications />} />
+          <Route path="notifications" element={<Notifications user={user} />} />
           <Route path="qrs" element={<StaffQRManager />} />
           <Route path="cards" element={<StaffCardManager />} />
           <Route path="revenue" element={<StaffRevenueReport />} />

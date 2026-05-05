@@ -23,6 +23,7 @@ const BookingManager = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const itemsPerPage = 10;
 
   const dateOptions = [
@@ -32,43 +33,54 @@ const BookingManager = () => {
     { label: '30 ngày qua', value: '30days' },
   ];
   
-  // State cho Confirm Modal
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     bookingId: null,
     shortCode: ''
   });
 
-  const fetchStats = async () => {
-    try {
-      const res = await api.get('/bookings/staff/stats');
-      setStats(res.data);
-    } catch (err) {
-      console.error('Lỗi lấy thống kê:', err);
-    }
-  };
-
-  const fetchBookings = async () => {
-    try {
-      const res = await api.get('/bookings/staff', { 
-        params: statusFilter === 'all' ? {} : { status: statusFilter } 
-      });
-      setBookings(res.data);
-    } catch (err) {
-      console.error('Lỗi lấy danh sách đơn:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/bookings/staff/stats', {
+          params: {
+            dateRange: dateFilter,
+            search: searchTerm.trim() || undefined
+          }
+        });
+        if (active) setStats(res.data);
+      } catch (err) {
+        console.error('Lỗi lấy thống kê:', err);
+      }
+    };
+
     const loadData = async () => {
+      fetchStats(); 
       setLoading(true);
-      await Promise.all([fetchStats(), fetchBookings()]);
-      setLoading(false);
+      try {
+        const res = await api.get('/bookings/staff', { 
+          params: { 
+            status: statusFilter === 'all' ? undefined : statusFilter,
+            page: currentPage,
+            limit: itemsPerPage,
+            search: searchTerm.trim() || undefined,
+            dateRange: dateFilter === 'all' ? undefined : dateFilter
+          } 
+        });
+        if (active) {
+          setBookings(res.data.data);
+          setTotalPages(res.data.totalPages);
+        }
+      } catch (err) {
+        console.error('Lỗi lấy danh sách đơn:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
     };
     loadData();
-  }, [statusFilter]);
+    return () => { active = false; };
+  }, [statusFilter, currentPage, searchTerm, dateFilter]);
 
   const handleClaim = async (id) => {
     try {
@@ -108,117 +120,56 @@ const BookingManager = () => {
     return raw.length <= 6 ? raw : raw.slice(-6);
   };
 
-  const filtered = bookings
-    .filter((b) => {
-      const key = `${b.code} ${b.customer_name || ''} ${b.customer_email || ''}`.toLowerCase();
-      const matchesSearch = key.includes(searchTerm.trim().toLowerCase());
-      
-      let matchesDate = true;
-      if (dateFilter !== 'all') {
-        const bDate = new Date(b.created_at);
-        const now = new Date();
-        
-        // Chuyển đổi sang ngày theo múi giờ VN (YYYY-MM-DD)
-        const toVNTS = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
-        const bDateStr = toVNTS(bDate);
-        const todayStr = toVNTS(now);
-        
-        if (dateFilter === 'today') {
-          matchesDate = bDateStr === todayStr;
-        } else if (dateFilter === '7days') {
-          const sevenDaysAgo = new Date(now);
-          sevenDaysAgo.setDate(now.getDate() - 7);
-          matchesDate = bDate >= sevenDaysAgo;
-        } else if (dateFilter === '30days') {
-          const thirtyDaysAgo = new Date(now);
-          thirtyDaysAgo.setDate(now.getDate() - 30);
-          matchesDate = bDate >= thirtyDaysAgo;
-        }
-      }
-
-      return matchesSearch && matchesDate;
-    })
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
-
+  // Phân trang
   const handlePageChange = (pageNumber) => {
+    if (pageNumber === currentPage) return;
+    setLoading(true);
     setCurrentPage(pageNumber);
     window.scrollTo(0, 0);
   };
 
-  if (loading) return <div className="loading">Đang tải...</div>;
+  const renderSkeleton = () => (
+    <div className="loading-skeleton">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="skeleton-item"></div>
+      ))}
+    </div>
+  );
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
-
     const pages = [];
     const maxVisible = 5;
     let start = Math.max(1, currentPage - 2);
     let end = Math.min(totalPages, start + maxVisible - 1);
-
-    if (end - start + 1 < maxVisible) {
-      start = Math.max(1, end - maxVisible + 1);
-    }
-
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
 
     return (
       <div className="pagination">
-        <button
-          type="button"
-          className="page-btn"
-          disabled={currentPage === 1}
-          onClick={() => handlePageChange(currentPage - 1)}
-        >
-          Trước
-        </button>
-
+        <button type="button" className="page-btn" disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}>Trước</button>
         {start > 1 && (
           <>
             <button type="button" className="page-btn" onClick={() => handlePageChange(1)}>1</button>
             {start > 2 && <span className="page-ellipsis">...</span>}
           </>
         )}
-
         {pages.map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={`page-btn ${currentPage === p ? 'active' : ''}`}
-            onClick={() => handlePageChange(p)}
-          >
-            {p}
-          </button>
+          <button key={p} type="button" className={`page-btn ${currentPage === p ? 'active' : ''}`} onClick={() => handlePageChange(p)}>{p}</button>
         ))}
-
         {end < totalPages && (
           <>
             {end < totalPages - 1 && <span className="page-ellipsis">...</span>}
             <button type="button" className="page-btn" onClick={() => handlePageChange(totalPages)}>{totalPages}</button>
           </>
         )}
-
-        <button
-          type="button"
-          className="page-btn"
-          disabled={currentPage === totalPages}
-          onClick={() => handlePageChange(currentPage + 1)}
-        >
-          Sau
-        </button>
+        <button type="button" className="page-btn" disabled={currentPage === totalPages} onClick={() => handlePageChange(currentPage + 1)}>Sau</button>
       </div>
     );
   };
 
   return (
     <div className="staff-booking-page">
-      {/* Dashboard Section */}
       <div className="stats-grid">
         <div className="stat-card total">
           <div className="stat-icon"><BarChart3 size={24} /></div>
@@ -260,7 +211,7 @@ const BookingManager = () => {
       <div className="booking-toolbar">
         <div className="booking-title">
           <h1>Quản lý đơn hàng</h1>
-          <p>Hiển thị {filtered.length} đơn hàng</p>
+          <p>Trang {currentPage} / {totalPages}</p>
         </div>
 
         <div className="booking-controls">
@@ -279,7 +230,6 @@ const BookingManager = () => {
           <select
             value={statusFilter}
             onChange={(e) => {
-              setLoading(true);
               setStatusFilter(e.target.value);
               setCurrentPage(1);
             }}
@@ -321,20 +271,30 @@ const BookingManager = () => {
             </tr>
           </thead>
           <tbody>
-            {currentItems.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={8} className="empty">Không có dữ liệu phù hợp.</td>
+                <td colSpan={8}>
+                  {renderSkeleton()}
+                </td>
+              </tr>
+            ) : bookings.length === 0 ? (
+              <tr>
+                <td colSpan={8}>
+                  <div className="empty-state">
+                    <Search size={48} />
+                    <p>Không có dữ liệu phù hợp.</p>
+                  </div>
+                </td>
               </tr>
             ) : (
-              currentItems.map((b) => (
+              bookings.map((b) => (
                 <tr key={b.id}>
-                  <td data-label="ID">#{b.id}</td>
+                  <td data-label="ID"><span>#{b.id}</span></td>
                   <td data-label="Mã đơn" className="th-code"><span className="mono">{shortCode(b.code)}</span></td>
                   <td data-label="Khách hàng">
                     <div className="customer-cell">
                       <span className="name">{b.customer_name}</span>
                       <span className="email">{b.customer_email}</span>
-                      <span className="phone">{b.customer_phone || 'Chưa cập nhật'}</span>
                     </div>
                   </td>
                   <td data-label="Tiền chuyển" className="td-money">
@@ -351,7 +311,7 @@ const BookingManager = () => {
                     )}
                   </td>
                   <td data-label="Trạng thái" className="th-status">
-                    <span className={`status-badge ${b.status}`}>{statusLabel(b.status)}</span>
+                    <span className={`status-text ${b.status}`}>{statusLabel(b.status)}</span>
                   </td>
                   <td data-label="Thời gian" className="td-date">
                     <div className="date-cell">
@@ -392,13 +352,9 @@ const BookingManager = () => {
 
       {renderPagination()}
 
-      {/* Confirm Modal */}
       {confirmModal.isOpen && (
         <div className="modal-overlay">
           <div className="confirm-modal-content">
-            <div className="confirm-icon-wrapper warning">
-              <Clock size={32} />
-            </div>
             <h3>Xác nhận xử lý đơn</h3>
             <p>Bạn có chắc chắn muốn nhận xử lý đơn hàng <strong>{confirmModal.shortCode}</strong> không?</p>
             <div className="confirm-actions">
@@ -409,7 +365,7 @@ const BookingManager = () => {
                 Hủy bỏ
               </button>
               <button 
-                className="confirm-btn success" 
+                className="confirm-btn" 
                 onClick={() => handleClaim(confirmModal.bookingId)}
               >
                 Xác nhận

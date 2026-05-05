@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
 import api from '../../../api/axios';
 import './BookingDetail.scss';
 
@@ -188,7 +189,7 @@ const BookingDetail = () => {
           <tr><th>Thanh toán lúc</th><td>{formatDateTime(booking.paid_at)}</td></tr>
           <tr><th>Xác nhận lúc</th><td>{formatDateTime(booking.confirmed_at)}</td></tr>
           <tr><th>Cập nhật lúc</th><td>{formatDateTime(booking.updated_at)}</td></tr>
-          <tr><th>Trạng thái</th><td>{statusLabel(booking.status)}</td></tr>
+          <tr><th>Trạng thái</th><td><div className={`status-text ${booking.status}`}>{statusLabel(booking.status)}</div></td></tr>
           <tr>
             <th>Ảnh bill khách gửi</th>
             <td>

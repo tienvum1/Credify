@@ -4,7 +4,7 @@ import { Bell, Clock, CheckCircle, Info, AlertCircle, ShoppingBag } from 'lucide
 import api from '../../api/axios';
 import './Notifications.scss';
 
-const Notifications = () => {
+const Notifications = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,8 +47,26 @@ const Notifications = () => {
   };
 
   const formatDateTime = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    if (!dateStr) return '';
+    let d = new Date(dateStr);
+    
+    // Nếu dateStr là string và không có thông tin múi giờ, ta coi nó là UTC (do backend config)
+    if (typeof dateStr === 'string' && !dateStr.includes('Z') && !dateStr.includes('+')) {
+      const utcDate = new Date(dateStr.replace(' ', 'T') + 'Z');
+      if (!isNaN(utcDate.getTime())) d = utcDate;
+    }
+
+    if (isNaN(d.getTime())) return dateStr;
+
+    return d.toLocaleString('vi-VN', { 
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const getIcon = (type) => {
@@ -62,6 +80,12 @@ const Notifications = () => {
 
   const getLink = (notif) => {
     if (!notif.booking_id) return '#';
+    
+    // Nếu là staff/admin/accountant thì dẫn tới trang quản lý của staff
+    if (user && ['staff', 'admin_system', 'accountant'].includes(user.role)) {
+      return `/staff/bookings/${notif.booking_id}`;
+    }
+    
     return `/my-bookings/${notif.booking_id}`;
   };
 

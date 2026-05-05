@@ -35,6 +35,32 @@
   }
 }
 
+.status-text {
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-block;
+
+  &.created {
+    color: #64748b;
+  }
+
+  &.customer_paid {
+    color: #d97706;
+  }
+
+  &.staff_confirmed,
+  &.completed {
+    color: #16a34a;
+  }
+
+  &.rejected,
+  &.cancelled {
+    color: #dc2626;
+  }
+}
+
 .detail-table {
   width: 100%;
   background: #fff;

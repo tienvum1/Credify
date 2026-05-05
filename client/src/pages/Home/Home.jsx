@@ -48,7 +48,14 @@ const Home = () => {
 
       <section className="qr-showcase" id="ready-qrs">
         <h2>Các thẻ QR đang sẵn sàng</h2>
-        {qrs.length === 0 ? (
+        {!user ? (
+          <div className="login-to-view">
+            <div className="lock-icon">🔒</div>
+            <h3>Vui lòng đăng nhập</h3>
+            <p>Bạn cần đăng nhập tài khoản để xem danh sách thẻ QR và sử dụng dịch vụ.</p>
+            <Link to="/login" className="login-btn">Đăng nhập ngay</Link>
+          </div>
+        ) : qrs.length === 0 ? (
           <div className="no-qrs">Hiện tại chưa có thẻ QR nào sẵn sàng.</div>
         ) : (
           <div className="qr-grid">
