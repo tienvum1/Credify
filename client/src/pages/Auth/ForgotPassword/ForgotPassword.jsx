@@ -7,9 +7,11 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const res = await api.post('/auth/forgot-password', { email });
       setMessage(res.data.message);
@@ -17,6 +19,8 @@ const ForgotPassword = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra');
       setMessage('');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,9 +60,9 @@ const ForgotPassword = () => {
             </div>
           </div>
 
-          <button type="submit" className="auth-btn">
-            Gửi yêu cầu
-            <i className="fas fa-paper-plane"></i>
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Đang gửi...' : 'Gửi yêu cầu'}
+            {!loading && <i className="fas fa-paper-plane"></i>}
           </button>
           
           <p className="auth-footer">

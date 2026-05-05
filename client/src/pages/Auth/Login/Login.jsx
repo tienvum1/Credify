@@ -11,6 +11,7 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -21,6 +22,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const res = await api.post('/auth/login', formData);
       // Lưu thông tin user vào localStorage (không lưu token vì đã dùng cookie)
@@ -28,6 +30,8 @@ const Login = () => {
       window.location.href = '/';
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -99,9 +103,9 @@ const Login = () => {
             <Link to="/forgot-password" id="forgot-password">Quên mật khẩu?</Link>
           </div>
 
-          <button type="submit" className="auth-btn">
-            Đăng Nhập
-            <i className="fas fa-arrow-right"></i>
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Đang xử lý...' : 'Đăng nhập'}
+            {!loading && <i className="fas fa-sign-in-alt"></i>}
           </button>
 
           <div className="divider">

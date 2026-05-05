@@ -10,6 +10,7 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -18,6 +19,7 @@ const ResetPassword = () => {
       return setError('Mật khẩu xác nhận không khớp');
     }
 
+    setLoading(true);
     try {
       await api.post('/auth/reset-password', {
         token,
@@ -26,6 +28,8 @@ const ResetPassword = () => {
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -83,9 +87,9 @@ const ResetPassword = () => {
             </div>
           </div>
 
-          <button type="submit" className="auth-btn">
-            Cập nhật mật khẩu
-            <i className="fas fa-key"></i>
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+            {!loading && <i className="fas fa-key"></i>}
           </button>
 
           <p className="auth-footer">

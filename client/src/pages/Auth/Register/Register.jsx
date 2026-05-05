@@ -14,6 +14,7 @@ const Register = () => {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -31,6 +32,7 @@ const Register = () => {
       return setError('Mật khẩu xác nhận không khớp');
     }
 
+    setLoading(true);
     try {
       await api.post('/auth/register', {
         full_name: formData.full_name,
@@ -40,6 +42,8 @@ const Register = () => {
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,9 +152,9 @@ const Register = () => {
             </div>
           </div>
 
-          <button type="submit" className="auth-btn">
-            Đăng Ký
-            <i className="fas fa-user-plus"></i>
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Đang đăng ký...' : 'Đăng ký ngay'}
+            {!loading && <i className="fas fa-user-plus"></i>}
           </button>
 
           <p className="auth-footer">
