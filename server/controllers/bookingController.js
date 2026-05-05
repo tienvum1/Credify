@@ -127,29 +127,29 @@ const createBooking = async (req, res) => {
 
     const bookingId = result.insertId;
 
-    // Thông báo cho khách hàng
-    await createNotification(
+    // Thông báo cho khách hàng (Gửi không chặn)
+    createNotification(
       customer_id,
       "Tạo đơn thành công",
       `Đơn hàng ${code.slice(-6)} đã được tạo thành công. Vui lòng thanh toán để tiếp tục.`,
       "booking_created",
       bookingId
-    );
+    ).catch(err => console.error("Lỗi gửi thông báo cho khách khi tạo đơn:", err));
 
-    // Thông báo cho TẤT CẢ staff và admin
-    const [allStaff] = await pool.query(
+    // Thông báo cho TẤT CẢ staff và admin (Gửi không chặn)
+    pool.query(
       "SELECT id FROM users WHERE role IN ('staff', 'admin_system', 'accountant')"
-    );
-
-    for (const staff of allStaff) {
-      await createNotification(
-        staff.id,
-        "Đơn hàng mới",
-        `Khách hàng vừa tạo đơn hàng mới ${code.slice(-6)} với số tiền ${Math.round(transferAmountNumber).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} VNĐ.`,
-        "booking_created",
-        bookingId
-      );
-    }
+    ).then(([allStaff]) => {
+      for (const staff of allStaff) {
+        createNotification(
+          staff.id,
+          "Đơn hàng mới",
+          `Khách hàng vừa tạo đơn hàng mới ${code.slice(-6)} với số tiền ${Math.round(transferAmountNumber).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} VNĐ.`,
+          "booking_created",
+          bookingId
+        ).catch(err => console.error(`Lỗi gửi thông báo cho staff ${staff.id} khi có đơn mới:`, err));
+      }
+    }).catch(err => console.error("Lỗi lấy danh sách staff khi tạo đơn:", err));
 
     const [rows] = await pool.query(
       "SELECT * FROM bookings WHERE id = ? LIMIT 1",
@@ -211,30 +211,30 @@ const submitCustomerPaid = async (req, res) => {
       [mainProofUrl, proofUrlsJson, note ? String(note).trim() : null, bookingId]
     );
 
-    // Thông báo cho staff khi khách tải bill
+    // Thông báo cho staff khi khách tải bill (Gửi không chặn để tránh timeout 502)
     if (booking.staff_id) {
-      await createNotification(
+      createNotification(
         booking.staff_id,
         "Khách đã chuyển tiền",
         `Đơn hàng ${booking.code.slice(-6)} đã được khách xác nhận chuyển tiền. Vui lòng kiểm tra bill.`,
         "customer_paid",
         bookingId
-      );
+      ).catch(err => console.error("Lỗi gửi thông báo cho staff:", err));
     } else {
       // Nếu đơn chưa có ai nhận, thông báo cho TẤT CẢ staff và admin
-      const [allStaff] = await pool.query(
+      pool.query(
         "SELECT id FROM users WHERE role IN ('staff', 'admin_system', 'accountant')"
-      );
-
-      for (const staff of allStaff) {
-        await createNotification(
-          staff.id,
-          "Khách đã chuyển tiền",
-          `Đơn hàng ${booking.code.slice(-6)} đã được khách xác nhận chuyển tiền. Vui lòng kiểm tra và nhận đơn.`,
-          "customer_paid",
-          bookingId
-        );
-      }
+      ).then(([allStaff]) => {
+        for (const staff of allStaff) {
+          createNotification(
+            staff.id,
+            "Khách đã chuyển tiền",
+            `Đơn hàng ${booking.code.slice(-6)} đã được khách xác nhận chuyển tiền. Vui lòng kiểm tra và nhận đơn.`,
+            "customer_paid",
+            bookingId
+          ).catch(err => console.error(`Lỗi gửi thông báo cho staff ${staff.id}:`, err));
+        }
+      }).catch(err => console.error("Lỗi lấy danh sách staff để gửi thông báo:", err));
     }
 
     const [rows] = await pool.query(
@@ -739,16 +739,16 @@ const staffConfirmBooking = async (req, res) => {
       [staff_id, staffProofUrls, bookingId]
     );
 
-    // Thông báo cho khách hàng khi đơn được xác nhận
+    // Thông báo cho khách hàng khi đơn được xác nhận (Gửi không chặn)
     const [bookingRow] = await pool.query("SELECT customer_id, code FROM bookings WHERE id = ?", [bookingId]);
     if (bookingRow.length > 0) {
-      await createNotification(
+      createNotification(
         bookingRow[0].customer_id,
         "Đơn hàng được xác nhận",
         `Đơn hàng ${bookingRow[0].code.slice(-6)} đã được nhân viên xác nhận thành công.`,
         "staff_confirmed",
         bookingId
-      );
+      ).catch(err => console.error("Lỗi gửi thông báo xác nhận đơn cho khách:", err));
     }
 
     const [rows] = await pool.query(
@@ -805,16 +805,16 @@ const staffRejectBooking = async (req, res) => {
       [staff_id, rejectNote, bookingId]
     );
 
-    // Thông báo cho khách hàng khi đơn bị từ chối
+    // Thông báo cho khách hàng khi đơn bị từ chối (Gửi không chặn)
     const [bookingRow] = await pool.query("SELECT customer_id, code FROM bookings WHERE id = ?", [bookingId]);
     if (bookingRow.length > 0) {
-      await createNotification(
+      createNotification(
         bookingRow[0].customer_id,
         "Đơn hàng bị từ chối",
         `Đơn hàng ${bookingRow[0].code.slice(-6)} đã bị từ chối. Lý do: ${rejectNote}`,
         "rejected",
         bookingId
-      );
+      ).catch(err => console.error("Lỗi gửi thông báo từ chối đơn cho khách:", err));
     }
 
     const [rows] = await pool.query(
