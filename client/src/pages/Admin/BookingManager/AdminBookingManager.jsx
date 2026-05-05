@@ -102,10 +102,11 @@ const AdminBookingManager = () => {
     return raw.length <= 6 ? raw : raw.slice(-6);
   };
 
-  const filtered = bookings
+  const filtered = (Array.isArray(bookings) ? bookings : [])
     .filter((b) => {
-      const key = `${b.code} ${b.customer_name || ''} ${b.customer_email || ''}`.toLowerCase();
-      const matchesSearch = key.includes(searchTerm.trim().toLowerCase());
+      if (!b) return false;
+      const key = `${b.code || ''} ${b.customer_name || ''} ${b.customer_email || ''}`.toLowerCase();
+      const matchesSearch = key.includes((searchTerm || '').trim().toLowerCase());
       
       let matchesDate = true;
       if (dateFilter !== 'all') {

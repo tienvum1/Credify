@@ -71,8 +71,9 @@ const BookingManager = () => {
           } 
         });
         if (active) {
-          setBookings(res.data.data);
-          setTotalPages(res.data.totalPages);
+          // Đảm bảo bookings luôn là mảng để tránh lỗi .filter hoặc .map
+          setBookings(Array.isArray(res.data.data) ? res.data.data : []);
+          setTotalPages(res.data.totalPages || 0);
         }
       } catch (err) {
         console.error('Lỗi lấy danh sách đơn:', err);
