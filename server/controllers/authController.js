@@ -81,24 +81,25 @@ const register = async (req, res) => {
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email/${verificationToken}`;
 
     const mailOptions = {
-      from: `"Hệ thống Thẻ Tín Dụng" <${process.env.EMAIL_USER}>`,
+      from: `"Credify" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Xác nhận đăng ký tài khoản',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #4f46e5; text-align: center;">Chào mừng bạn đến với hệ thống!</h2>
+          <h2 style="color: #4f46e5; text-align: center;">Chào mừng bạn đến với Credify!</h2>
           <p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng nhấn vào nút bên dưới để xác nhận email của bạn:</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verificationUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Xác nhận Email</a>
           </div>
           <p style="color: #64748b; font-size: 14px;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Hệ thống Thẻ Tín Dụng. All rights reserved.</p>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify. All rights reserved.</p>
         </div>
       `
     };
 
-    await transporter.sendMail(mailOptions);
+    // Gửi email không chặn (Asynchronous) để tránh timeout 502/504
+    transporter.sendMail(mailOptions).catch(err => console.error("Lỗi gửi mail xác nhận:", err));
 
     res.status(201).json({ message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' });
   } catch (err) {
@@ -271,7 +272,8 @@ const forgotPassword = async (req, res) => {
       `
     };
 
-    await transporter.sendMail(mailOptions);
+    // Gửi email không chặn (Asynchronous) để tránh timeout 502/504
+    transporter.sendMail(mailOptions).catch(err => console.error("Lỗi gửi mail khôi phục mật khẩu:", err));
 
     res.json({ message: 'Link khôi phục mật khẩu đã được gửi vào email của bạn.' });
   } catch (err) {
