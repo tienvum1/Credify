@@ -24,18 +24,33 @@ if (!isProduction) {
   cookieOptions.sameSite = 'lax';
 }
 
-// Cấu hình Mail Transporter
+// Cấu hình Mail Transporter chuyên nghiệp hơn
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // use SSL
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    // Không từ chối kết nối nếu chứng chỉ không khớp (hỗ trợ một số môi trường deploy)
+    rejectUnauthorized: false
   }
 });
 
 // Kiểm tra cấu hình email ngay khi khởi động
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   console.warn('CẢNH BÁO: EMAIL_USER hoặc EMAIL_PASS chưa được cấu hình trong .env. Tính năng gửi mail sẽ không hoạt động.');
+} else {
+  // Xác thực kết nối SMTP
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('Lỗi kết nối SMTP (Email):', error);
+    } else {
+      console.log('Hệ thống Email đã sẵn sàng gửi thư.');
+    }
+  });
 }
 
 // Helper tạo token và gửi cookie
@@ -99,7 +114,17 @@ const register = async (req, res) => {
     };
 
     // Gửi email không chặn (Asynchronous) để tránh timeout 502/504
-    transporter.sendMail(mailOptions).catch(err => console.error("Lỗi gửi mail xác nhận:", err));
+    transporter.sendMail(mailOptions)
+      .then(info => console.log("Email xác nhận đã gửi:", info.messageId))
+      .catch(err => {
+        console.error("LỖI GỬI MAIL XÁC NHẬN:");
+        console.error("Chi tiết lỗi:", err.message);
+        console.error("Mã lỗi:", err.code);
+        console.error("Cấu hình hiện tại:", {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS ? '********' : 'Trống'
+        });
+      });
 
     res.status(201).json({ message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' });
   } catch (err) {
@@ -273,7 +298,17 @@ const forgotPassword = async (req, res) => {
     };
 
     // Gửi email không chặn (Asynchronous) để tránh timeout 502/504
-    transporter.sendMail(mailOptions).catch(err => console.error("Lỗi gửi mail khôi phục mật khẩu:", err));
+    transporter.sendMail(mailOptions)
+      .then(info => console.log("Email khôi phục đã gửi:", info.messageId))
+      .catch(err => {
+        console.error("LỖI GỬI MAIL KHÔI PHỤC:");
+        console.error("Chi tiết lỗi:", err.message);
+        console.error("Mã lỗi:", err.code);
+        console.error("Cấu hình hiện tại:", {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS ? '********' : 'Trống'
+        });
+      });
 
     res.json({ message: 'Link khôi phục mật khẩu đã được gửi vào email của bạn.' });
   } catch (err) {

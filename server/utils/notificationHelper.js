@@ -2,13 +2,18 @@ const pool = require("../config/db").pool;
 const nodemailer = require('nodemailer');
 
 /**
- * Cấu hình transporter cho việc gửi email
+ * Cấu hình transporter cho việc gửi email chuyên nghiệp hơn
  */
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // use SSL
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
@@ -69,14 +74,15 @@ const sendBookingEmail = async (email, subject, booking, type, extraInfo = '') =
   `;
 
   try {
-    await transporter.sendMail({
-      from: `"Credify" <${process.env.EMAIL_USER}>`,
+    const info = await transporter.sendMail({
+      from: `"Credify.vn" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `[Credify] ${subject} - #${shortCode}`,
       html: html
     });
+    console.log(`Email thông báo (${type}) đã gửi tới ${email}:`, info.messageId);
   } catch (err) {
-    console.error("Lỗi khi gửi email thông báo:", err);
+    console.error(`LỖI GỬI EMAIL THÔNG BÁO (${type}):`, err.message);
   }
 };
 
