@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const db = require('./config/db');
 const pool = db.pool;
@@ -18,6 +20,22 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// Bảo mật Header với Helmet
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
+}));
+
+// Giới hạn số lượng request (Rate Limiting)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 phút
+  max: 1000, // Tăng giới hạn lên 1000 cho dashboard vì có nhiều polling
+  message: 'Quá nhiều yêu cầu từ IP này, vui lòng thử lại sau 15 phút',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', limiter);
 
 // Tin tưởng proxy (Render/Vercel) để có thể set cookie secure: true
 app.set('trust proxy', 1);
@@ -94,7 +112,7 @@ setInterval(autoCancelBookings, 5 * 60 * 1000);
 // Chạy ngay khi khởi động
 autoCancelBookings();
 
-// Kiểm tra kết nối Database Endpoint (Dùng cho UI check)
+// Kiểm tra kết nối Database Endpoint (Dùng cho UI check - Đã bỏ thông tin nhạy cảm)
 app.get('/api/db-check', async (req, res) => {
   try {
     const connection = await pool.getConnection();
@@ -102,19 +120,13 @@ app.get('/api/db-check', async (req, res) => {
     connection.release();
     res.json({ 
       status: 'success', 
-      message: 'Kết nối Database thành công!',
-      config: {
-        host: process.env.MYSQLHOST,
-        user: process.env.MYSQLUSER,
-        database: process.env.MYSQL_DATABASE
-      }
+      message: 'Kết nối Database thành công!'
     });
   } catch (err) {
     console.error('Lỗi kết nối DB:', err);
     res.status(500).json({ 
       status: 'error', 
-      message: 'Không thể kết nối Database', 
-      error: err.message 
+      message: 'Không thể kết nối Database'
     });
   }
 });
