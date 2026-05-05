@@ -15,10 +15,12 @@ const StaffQRManager = () => {
   const [mainImageFile, setMainImageFile] = useState(null);
   const [qrImageFile, setQrImageFile] = useState(null);
   const [maxAmount, setMaxAmount] = useState('');
+  const [feeRate, setFeeRate] = useState('');
   const [feeRateL1, setFeeRateL1] = useState('');
   const [feeRateL2, setFeeRateL2] = useState('');
   const [feeRateL3, setFeeRateL3] = useState('');
   const [note, setNote] = useState('');
+  const [cardLines, setCardLines] = useState('');
   const [status, setStatus] = useState('ready');
 
   const refreshQRs = async () => {
@@ -48,10 +50,12 @@ const StaffQRManager = () => {
     setMainImageFile(null);
     setQrImageFile(null);
     setMaxAmount('');
+    setFeeRate('');
     setFeeRateL1('');
     setFeeRateL2('');
     setFeeRateL3('');
     setNote('');
+    setCardLines('');
     setStatus('ready');
     setEditingQr(null);
   };
@@ -59,10 +63,12 @@ const StaffQRManager = () => {
   const handleEdit = (qr) => {
     setEditingQr(qr);
     setMaxAmount(qr.max_amount_per_trans);
+    setFeeRate(qr.fee_rate);
     setFeeRateL1(qr.fee_rate_l1 || '');
     setFeeRateL2(qr.fee_rate_l2 || '');
     setFeeRateL3(qr.fee_rate_l3 || '');
     setNote(qr.note || '');
+    setCardLines(Array.isArray(qr.card_lines) ? qr.card_lines.join(', ') : (qr.card_lines || ''));
     setStatus(qr.status || 'ready');
     setShowModal(true);
   };
@@ -73,12 +79,15 @@ const StaffQRManager = () => {
     if (mainImageFile) formData.append('main_image', mainImageFile);
     if (qrImageFile) formData.append('qr_image', qrImageFile);
     formData.append('max_amount_per_trans', maxAmount);
-    formData.append('fee_rate', feeRateL1 || 0); // Gửi fee_rate_l1 làm mặc định nếu DB yêu cầu
+    formData.append('fee_rate', feeRate);
     formData.append('fee_rate_l1', feeRateL1);
     formData.append('fee_rate_l2', feeRateL2);
     formData.append('fee_rate_l3', feeRateL3);
     formData.append('note', note);
     formData.append('status', status);
+    
+    // Gửi card_lines dưới dạng chuỗi (backend đã có logic parse)
+    formData.append('card_lines', cardLines);
 
     try {
       if (editingQr) {
@@ -97,22 +106,18 @@ const StaffQRManager = () => {
   if (loading) return <div className="loading">Đang tải...</div>;
 
   const formatMoney = (value) => {
-    if (!value && value !== 0) return '—';
     const n = Math.round(Number(value));
     if (Number.isNaN(n)) return '—';
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  };
-
-  const handleMaxAmountChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setMaxAmount(value);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
   };
 
   const formatDateTime = (value) => {
     if (!value) return '—';
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    // Cộng thêm 7 tiếng (UTC+7)
+    d.setHours(d.getHours() + 7);
+    return d.toLocaleString('vi-VN');
   };
 
   const handleToggleStatus = async (qr) => {
@@ -126,6 +131,21 @@ const StaffQRManager = () => {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const normalizeCardLines = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch (e) {
+        void e;
+      }
+      return raw.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
   };
 
   const filteredQrs = qrs.filter((qr) => {
@@ -166,19 +186,19 @@ const StaffQRManager = () => {
               <th className="th-stt">ID</th>
               <th className="th-img">Ảnh đại diện</th>
               <th className="th-img">Ảnh QR</th>
-              <th className="th-money">Hạn mức</th>
-              <th className="th-fee">Phí Cấp 1</th>
-              <th className="th-fee">Phí Cấp 2</th>
-              <th className="th-fee">Phí Cấp 3</th>
+              <th className="th-money">Số tiền tối đa 1 lần chuyển</th>
+              <th className="th-fee">Phí</th>
+              <th className="th-lines">Thẻ hỗ trợ</th>
               <th className="th-date">Ngày tạo</th>
-              <th className="th-status">Trạng thái</th>
+              <th className="th-date">Ngày cập nhật</th>
+              <th className="th-status">Trạng thái QR</th>
               <th className="th-actions">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {filteredQrs.length === 0 ? (
               <tr>
-                <td colSpan={13} className="empty">
+                <td colSpan={10} className="empty">
                   Không có dữ liệu phù hợp.
                 </td>
               </tr>
@@ -214,20 +234,22 @@ const StaffQRManager = () => {
                         </button>
                       </div>
                     </td>
-                    <td data-label="Hạn mức" className="td-money">
-                      <span className="money-value">{formatMoney(qr.max_amount_per_trans)} VNĐ</span>
+                    <td data-label="Số tiền tối đa 1 lần chuyển" className="td-money">
+                      <span className="money-value">{formatMoney(qr.max_amount_per_trans)}</span>
                     </td>
-                    <td data-label="Phí Cấp 1" className="td-fee">
-                      <span className="fee-badge l1">{qr.fee_rate_l1 || '—'}%</span>
+                    <td data-label="Phí" className="td-fee">
+                      <span className="fee-badge">{qr.fee_rate}%</span>
                     </td>
-                    <td data-label="Phí Cấp 2" className="td-fee">
-                      <span className="fee-badge l2">{qr.fee_rate_l2 || '—'}%</span>
-                    </td>
-                    <td data-label="Phí Cấp 3" className="td-fee">
-                      <span className="fee-badge l3">{qr.fee_rate_l3 || '—'}%</span>
+                    <td data-label="Thẻ hỗ trợ" className="td-lines">
+                      <div className="card-lines-chips">
+                        {normalizeCardLines(qr.card_lines).map((line, idx) => (
+                          <span key={idx} className="card-line-chip">{line}</span>
+                        ))}
+                      </div>
                     </td>
                     <td data-label="Ngày tạo" className="td-date">{formatDateTime(qr.created_at)}</td>
-                    <td data-label="Trạng thái" className="td-status">
+                    <td data-label="Ngày cập nhật" className="td-date">{formatDateTime(qr.updated_at)}</td>
+                    <td data-label="Trạng thái QR" className="td-status">
                       <button
                         type="button"
                         className="status-toggle-btn"
@@ -282,16 +304,11 @@ const StaffQRManager = () => {
               </div>
               <div className="form-group">
                 <label>Mức tiền tối đa (VNĐ):</label>
-                <div className="money-input-wrapper">
-                  <input 
-                    type="text" 
-                    value={formatMoney(maxAmount)} 
-                    onChange={handleMaxAmountChange} 
-                    required 
-                    placeholder="Ví dụ: 40.000"
-                  />
-                  {maxAmount && <span className="input-preview">{formatMoney(maxAmount)} VNĐ</span>}
-                </div>
+                <input type="number" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Tỷ lệ phí mặc định (%):</label>
+                <input type="number" step="0.01" value={feeRate} onChange={(e) => setFeeRate(e.target.value)} required />
               </div>
               <div className="fee-levels-grid">
                 <div className="form-group">
@@ -307,7 +324,10 @@ const StaffQRManager = () => {
                   <input type="number" step="0.01" value={feeRateL3} onChange={(e) => setFeeRateL3(e.target.value)} placeholder="Mặc định" />
                 </div>
               </div>
-
+              <div className="form-group">
+                <label>Dòng thẻ hỗ trợ (cách nhau bằng dấu phẩy):</label>
+                <input type="text" value={cardLines} onChange={(e) => setCardLines(e.target.value)} placeholder="Ví dụ: Visa, Master, Napas" />
+              </div>
               <div className="form-group">
                 <label>Ghi chú:</label>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} />

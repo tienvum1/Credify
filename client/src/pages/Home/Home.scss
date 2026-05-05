@@ -133,16 +133,14 @@
 
         .qr-header {
           margin-bottom: 12px;
-          display: flex;
-          justify-content: center;
 
           .qr-fee {
-            font-size: 18px;
-            font-weight: 800;
-            color: #f43f5e;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            background: #e1f5fe;
+            color: #0288d1;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
           }
         }
 
@@ -168,6 +166,19 @@
             border: 1px solid rgba(99, 102, 241, 0.1);
             white-space: nowrap;
           }
+        }
+
+        .qr-note {
+          font-size: 0.9rem;
+          color: #636e72;
+          margin-bottom: 20px;
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2; // Giới hạn đúng 2 dòng
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-height: 2.7em; // Giữ chiều cao cố định cho 2 dòng để các card đều nhau
         }
 
         .use-now-btn {

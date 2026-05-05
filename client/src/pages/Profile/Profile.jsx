@@ -31,14 +31,6 @@ const Profile = () => {
     is_default: false
   });
 
-  // Change password state
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordFormData, setPasswordFormData] = useState({
-    oldPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-
   const navigate = useNavigate();
 
   const fetchBankAccounts = async () => {
@@ -67,12 +59,7 @@ const Profile = () => {
       }
     };
     fetchProfile();
-    
-    // Tách riêng để tránh lỗi linter về setState trong effect đồng bộ
-    const loadBanks = async () => {
-      await fetchBankAccounts();
-    };
-    loadBanks();
+    fetchBankAccounts();
   }, []);
 
   const handleOpenBankModal = (bank = null) => {
@@ -116,8 +103,8 @@ const Profile = () => {
       }
       setShowBankModal(false);
       fetchBankAccounts();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi lưu thông tin');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi lưu thông tin');
     }
   };
 
@@ -127,7 +114,7 @@ const Profile = () => {
       await api.delete(`/bank-accounts/${id}`);
       toast.success('Xóa tài khoản thành công');
       fetchBankAccounts();
-    } catch {
+    } catch (err) {
       toast.error('Lỗi khi xóa tài khoản');
     }
   };
@@ -151,35 +138,6 @@ const Profile = () => {
     } catch (err) {
       console.error('Lỗi khi cập nhật profile:', err);
       toast.error(err.response?.data?.message || 'Cập nhật thất bại');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    const { oldPassword, newPassword, confirmPassword } = passwordFormData;
-
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      return toast.warn('Vui lòng nhập đầy đủ thông tin');
-    }
-
-    if (newPassword !== confirmPassword) {
-      return toast.warn('Mật khẩu mới không trùng khớp');
-    }
-
-    if (newPassword.length < 6) {
-      return toast.warn('Mật khẩu mới phải có ít nhất 6 ký tự');
-    }
-
-    setUpdating(true);
-    try {
-      await api.put('/auth/change-password', { oldPassword, newPassword });
-      toast.success('Đổi mật khẩu thành công!');
-      setShowPasswordModal(false);
-      setPasswordFormData({ oldPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Đổi mật khẩu thất bại');
     } finally {
       setUpdating(false);
     }
@@ -354,54 +312,6 @@ const Profile = () => {
                 </div>
               </div>
             </div>
-
-            {/* Mục Quản lý ngân hàng - Đưa vào main content */}
-            <div className="profile-section-header">
-              <BankIcon size={24} />
-              <h2>Quản lý tài khoản ngân hàng</h2>
-              <button className="add-bank-btn" onClick={() => handleOpenBankModal()}>
-                <Plus size={16} />
-                <span>Thêm tài khoản mới</span>
-              </button>
-            </div>
-
-            <div className="bank-accounts-container">
-              {bankAccounts.length === 0 ? (
-                <div className="content-card empty-banks-card">
-                  <div className="empty-banks">
-                    <BankIcon size={48} />
-                    <p>Bạn chưa có tài khoản ngân hàng lưu trữ</p>
-                    <span>Thêm tài khoản để thực hiện các giao dịch thanh toán nhanh hơn</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="bank-list">
-                  {bankAccounts.map((bank) => (
-                    <div key={bank.id} className={`bank-item ${bank.is_default ? 'default' : ''}`}>
-                      <div className="bank-info">
-                        <div className="bank-name-group">
-                          <span className="bank-name">{bank.bank_name}</span>
-                          {bank.is_default && <span className="default-badge">Mặc định</span>}
-                        </div>
-                        <div className="account-number">{bank.account_number}</div>
-                        <div className="account-holder">{bank.account_holder}</div>
-                      </div>
-                      <div className="bank-actions">
-                        <button className="set-default-btn" title="Đặt làm mặc định" onClick={() => !bank.is_default && handleSaveBank({ preventDefault: () => {}, target: {}}, bank, { is_default: true })}>
-                          <Star size={16} fill={bank.is_default ? "currentColor" : "none"} />
-                        </button>
-                        <button className="edit-bank-btn" onClick={() => handleOpenBankModal(bank)}>
-                          <Edit3 size={16} />
-                        </button>
-                        <button className="delete-bank-btn" onClick={() => handleDeleteBank(bank.id)}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="profile-side-content">
@@ -414,7 +324,7 @@ const Profile = () => {
               </div>
               <div className="card-body">
                 <div className="settings-menu">
-                  <button className="menu-item" onClick={() => setShowPasswordModal(true)}>
+                  <button className="menu-item" onClick={() => toast.info('Tính năng đang phát triển')}>
                     <div className="menu-icon"><Lock size={18} /></div>
                     <div className="menu-text">
                       <span className="menu-label">Đổi mật khẩu</span>
@@ -432,6 +342,54 @@ const Profile = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Mục Quản lý ngân hàng - Tách biệt hoàn toàn */}
+        <div className="profile-section-header">
+          <BankIcon size={24} />
+          <h2>Quản lý tài khoản ngân hàng</h2>
+          <button className="add-bank-btn" onClick={() => handleOpenBankModal()}>
+            <Plus size={16} />
+            <span>Thêm tài khoản mới</span>
+          </button>
+        </div>
+
+        <div className="bank-accounts-container">
+          {bankAccounts.length === 0 ? (
+            <div className="content-card empty-banks-card">
+              <div className="empty-banks">
+                <BankIcon size={48} />
+                <p>Bạn chưa có tài khoản ngân hàng lưu trữ</p>
+                <span>Thêm tài khoản để thực hiện các giao dịch thanh toán nhanh hơn</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bank-list">
+              {bankAccounts.map((bank) => (
+                <div key={bank.id} className={`bank-item ${bank.is_default ? 'default' : ''}`}>
+                  <div className="bank-info">
+                    <div className="bank-name-group">
+                      <span className="bank-name">{bank.bank_name}</span>
+                      {bank.is_default && <span className="default-badge">Mặc định</span>}
+                    </div>
+                    <div className="account-number">{bank.account_number}</div>
+                    <div className="account-holder">{bank.account_holder}</div>
+                  </div>
+                  <div className="bank-actions">
+                    <button className="set-default-btn" title="Đặt làm mặc định" onClick={() => !bank.is_default && handleSaveBank({ preventDefault: () => {}, target: {}}, bank, { is_default: true })}>
+                      <Star size={16} fill={bank.is_default ? "currentColor" : "none"} />
+                    </button>
+                    <button className="edit-bank-btn" onClick={() => handleOpenBankModal(bank)}>
+                      <Edit3 size={16} />
+                    </button>
+                    <button className="delete-bank-btn" onClick={() => handleDeleteBank(bank.id)}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -485,55 +443,6 @@ const Profile = () => {
               <div className="modal-actions">
                 <button type="button" className="cancel-btn" onClick={() => setShowBankModal(false)}>Hủy</button>
                 <button type="submit" className="save-btn">Lưu thông tin</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showPasswordModal && (
-        <div className="bank-modal-overlay">
-          <div className="bank-modal">
-            <div className="modal-header">
-              <h3>Đổi mật khẩu</h3>
-              <button onClick={() => setShowPasswordModal(false)}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleChangePassword}>
-              <div className="form-group">
-                <label>Mật khẩu hiện tại</label>
-                <input 
-                  type="password" 
-                  placeholder="Nhập mật khẩu hiện tại"
-                  value={passwordFormData.oldPassword}
-                  onChange={(e) => setPasswordFormData({...passwordFormData, oldPassword: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Mật khẩu mới</label>
-                <input 
-                  type="password" 
-                  placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                  value={passwordFormData.newPassword}
-                  onChange={(e) => setPasswordFormData({...passwordFormData, newPassword: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Xác nhận mật khẩu mới</label>
-                <input 
-                  type="password" 
-                  placeholder="Nhập lại mật khẩu mới"
-                  value={passwordFormData.confirmPassword}
-                  onChange={(e) => setPasswordFormData({...passwordFormData, confirmPassword: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => setShowPasswordModal(false)}>Hủy</button>
-                <button type="submit" className="save-btn" disabled={updating}>
-                  {updating ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
-                </button>
               </div>
             </form>
           </div>

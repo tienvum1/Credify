@@ -8,13 +8,21 @@ const nodemailer = require('nodemailer');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Cấu hình cookie options
+// Cấu hình cookie options linh hoạt cho production (Vercel/Render) và local
+const isProduction = process.env.NODE_ENV === 'production';
+
 const cookieOptions = {
   httpOnly: true, // Chỉ server mới đọc được, chống XSS
-  secure: process.env.NODE_ENV === 'production', // Chỉ gửi qua HTTPS khi production
-  sameSite: 'lax', // Chống CSRF
+  secure: true,   // Luôn để true nếu dùng sameSite: 'none' (Render/Vercel hỗ trợ HTTPS)
+  sameSite: 'none', // Bắt buộc 'none' để gửi cookie giữa các domain khác nhau
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
 };
+
+// Nếu chạy local (không có HTTPS), điều chỉnh để cookie vẫn hoạt động
+if (!isProduction) {
+  cookieOptions.secure = false;
+  cookieOptions.sameSite = 'lax';
+}
 
 // Cấu hình Mail Transporter
 const transporter = nodemailer.createTransport({
@@ -211,8 +219,8 @@ const googleLogin = async (req, res) => {
 
 const logout = (req, res) => {
   res.cookie('token', 'none', {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true
+    ...cookieOptions,
+    expires: new Date(Date.now() + 10 * 1000)
   });
   res.status(200).json({ message: 'Đã đăng xuất' });
 };

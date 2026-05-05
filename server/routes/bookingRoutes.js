@@ -11,8 +11,6 @@ const {
   getMyBookings,
   getMyBookingDetail,
   staffGetBookings,
-  getStaffStats,
-  claimBooking,
   staffGetBookingDetail,
   staffConfirmBooking,
   staffRejectBooking,
@@ -30,11 +28,9 @@ router.post(
   submitCustomerPaid
 );
 
-router.get("/staff/stats", protect, authorize("staff", "admin_system"), getStaffStats);
-router.get("/staff", protect, authorize("staff", "admin_system"), staffGetBookings);
-router.get("/staff/:id", protect, authorize("staff", "admin_system"), staffGetBookingDetail);
-router.patch("/:id/claim", protect, authorize("staff"), claimBooking);
-router.patch("/:id/confirm", protect, authorize("staff"), upload.array("proof", 3), staffConfirmBooking);
+router.get("/staff", protect, authorize("staff"), staffGetBookings);
+router.get("/staff/:id", protect, authorize("staff"), staffGetBookingDetail);
+router.patch("/:id/confirm", protect, authorize("staff"), staffConfirmBooking);
 router.patch("/:id/reject", protect, authorize("staff"), staffRejectBooking);
 
 module.exports = router;

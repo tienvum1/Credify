@@ -19,6 +19,9 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Tin tưởng proxy (Render/Vercel) để có thể set cookie secure: true
+app.set('trust proxy', 1);
+
 // Khởi tạo Database
 initDB();
 

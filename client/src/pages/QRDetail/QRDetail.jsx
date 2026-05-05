@@ -19,16 +19,6 @@ const QRDetail = () => {
   const [selectedBankId, setSelectedBankId] = useState(null);
   const [showManualInput, setShowManualInput] = useState(false);
 
-  const VIETNAM_BANKS = [
-    'Vietcombank', 'VietinBank', 'BIDV', 'Agribank', 
-    'MBBank', 'Techcombank', 'ACB', 'VPBank', 
-    'TPBank', 'Sacombank', 'HDBank', 'VIB', 
-    'SHB', 'Eximbank', 'MSB', 'SeABank', 
-    'Bac A Bank', 'PVcomBank', 'OceanBank', 'GPBank',
-    'ABBANK', 'VietBank', 'Viet Capital Bank', 'Nam A Bank',
-    'NCB', 'OCB', 'DongA Bank', 'Saigonbank', 'Kienlongbank'
-  ].sort();
-
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
@@ -122,12 +112,7 @@ const QRDetail = () => {
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
     if (!Number.isFinite(n)) return '—';
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  };
-
-  const handleAmountChange = (e) => {
-    const val = e.target.value.replace(/\D/g, ''); // Chỉ giữ lại số
-    setAmount(val);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
   };
 
   const handleCreateOrder = () => {
@@ -146,10 +131,6 @@ const QRDetail = () => {
     }
     if (!computed.isAmountValid) {
       setError('Vui lòng nhập số tiền khách chuyển hợp lệ');
-      return;
-    }
-    if (computed.amountNumber < 500000) {
-      setError('Số tiền tối thiểu cho mỗi đơn hàng là 500.000 VNĐ');
       return;
     }
     if (computed.overLimit) {
@@ -210,10 +191,10 @@ const QRDetail = () => {
           <div className="qr-meta">
             <div className="qr-meta-row">
               <span className="label">Số tiền tối đa 1 lần chuyển</span>
-              <span className="value">{formatMoney(qr.max_amount_per_trans)} VNĐ</span>
+              <span className="value">{formatMoney(qr.max_amount_per_trans)}</span>
             </div>
             <div className="qr-meta-row">
-              <span className="label">Phí giao dịch</span>
+              <span className="label">Phí {user?.level > 0 && `(Cấp ${user.level})`}</span>
               <span className="value">{computed.feeRateNumber}%</span>
             </div>
             {qr.note && (
@@ -280,29 +261,13 @@ const QRDetail = () => {
               <div className="manual-fields-group">
                 <label className="field">
                   <span>Ngân hàng</span>
-                  <select
+                  <input
+                    type="text"
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    className="bank-select-dropdown"
-                  >
-                    <option value="">-- Chọn ngân hàng --</option>
-                    {VIETNAM_BANKS.map(bank => (
-                      <option key={bank} value={bank}>{bank}</option>
-                    ))}
-                    <option value="Other">Khác...</option>
-                  </select>
+                    placeholder="Ví dụ: Vietcombank"
+                  />
                 </label>
-
-                {bankName === 'Other' && (
-                  <label className="field">
-                    <span>Nhập tên ngân hàng khác</span>
-                    <input
-                      type="text"
-                      onChange={(e) => setBankName(e.target.value)}
-                      placeholder="Ví dụ: Ngân hàng số Cake"
-                    />
-                  </label>
-                )}
 
                 <label className="field">
                   <span>Số tài khoản</span>
@@ -332,16 +297,18 @@ const QRDetail = () => {
 
             <label className="field">
               <span>Tiền khách chuyển</span>
-              <div className="money-input-wrapper">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={formatMoney(amount)}
-                  onChange={handleAmountChange}
-                  placeholder="Nhập số tiền (VNĐ)"
-                />
-                {amount && <div className="input-preview">{formatMoney(amount)} VNĐ</div>}
-              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, ''); // Chỉ giữ lại số
+                  setAmount(val);
+                }}
+                placeholder="Nhập số tiền (VNĐ)"
+                min="0"
+                max={Number.isFinite(computed.maxAmountNumber) ? computed.maxAmountNumber : undefined}
+              />
             </label>
             {Number.isFinite(computed.maxAmountNumber) && (
               <div className="order-hint">
@@ -352,11 +319,11 @@ const QRDetail = () => {
             <div className="order-summary">
               <div className="row">
                 <span>Phí ({computed.feeRateNumber}%)</span>
-                <span>{formatMoney(computed.fee)} VNĐ</span>
+                <span>{formatMoney(computed.fee)}</span>
               </div>
               <div className="row total">
                 <span>Nhận được</span>
-                <span>{formatMoney(computed.net)} VNĐ</span>
+                <span>{formatMoney(computed.net)}</span>
               </div>
             </div>
             {computed.isAmountValid && Number.isFinite(computed.feeRateNumber) && (
