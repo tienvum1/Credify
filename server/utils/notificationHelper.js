@@ -2,19 +2,22 @@ const pool = require("../config/db").pool;
 const nodemailer = require('nodemailer');
 
 /**
- * Cấu hình transporter cho việc gửi email chuyên nghiệp hơn
+ * Cấu hình transporter cho việc gửi email tối ưu cho Cloud
  */
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // use SSL
+  port: 587,
+  secure: false, 
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
   tls: {
     rejectUnauthorized: false
-  }
+  },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000
 });
 
 /**
