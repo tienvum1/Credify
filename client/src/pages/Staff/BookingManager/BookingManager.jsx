@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Clock, CheckCircle2,
-  XCircle, UserPlus, Users, Search, Eye
+  XCircle, UserPlus, Users, Search
 } from 'lucide-react';
 import api from '../../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -21,6 +21,7 @@ const BookingManager = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [processingFilter, setProcessingFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -62,6 +63,7 @@ const BookingManager = () => {
         const res = await api.get('/bookings/staff', { 
           params: { 
             status: statusFilter === 'all' ? undefined : statusFilter,
+            processing_status: processingFilter === 'all' ? undefined : processingFilter,
             page: currentPage,
             limit: itemsPerPage,
             search: searchTerm.trim() || undefined,
@@ -80,7 +82,7 @@ const BookingManager = () => {
     };
     loadData();
     return () => { active = false; };
-  }, [statusFilter, currentPage, searchTerm, dateFilter]);
+  }, [statusFilter, processingFilter, currentPage, searchTerm, dateFilter]);
 
   const handleClaim = async (id) => {
     try {
@@ -228,6 +230,19 @@ const BookingManager = () => {
           </div>
 
           <select
+            value={processingFilter}
+            onChange={(e) => {
+              setProcessingFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Tất cả đơn</option>
+            <option value="unclaimed">Chưa xử lý </option>
+            <option value="processing">Đang xử lý </option>
+            <option value="processed">Đã xử lý </option>
+          </select>
+
+          <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
@@ -338,7 +353,6 @@ const BookingManager = () => {
                         </button>
                       )}
                       <button className="detail-view-btn" onClick={() => navigate(`/staff/bookings/${b.id}`)}>
-                        <Eye size={16} />
                         <span>Chi tiết</span>
                       </button>
                     </div>

@@ -538,7 +538,7 @@ const claimBooking = async (req, res) => {
 
 const staffGetBookings = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
+    const { status, processing_status, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
     const offset = (page - 1) * limit;
     const params = [];
     let whereSql = "WHERE 1=1";
@@ -550,6 +550,20 @@ const staffGetBookings = async (req, res) => {
       } else {
         whereSql += " AND b.status = ?";
         params.push(status);
+      }
+    }
+
+    // Filter theo trạng thái xử lý của nhân viên
+    if (processing_status && processing_status !== "all") {
+      if (processing_status === "unclaimed") {
+        // Chưa có ai nhận đơn
+        whereSql += " AND b.staff_id IS NULL";
+      } else if (processing_status === "processing") {
+        // Đang xử lý (đã nhận đơn nhưng chưa hoàn thành/từ chối/hủy)
+        whereSql += " AND b.staff_id IS NOT NULL AND b.status = 'customer_paid'";
+      } else if (processing_status === "processed") {
+        // Đã xử lý (đã hoàn thành hoặc đã từ chối)
+        whereSql += " AND b.staff_id IS NOT NULL AND b.status IN ('staff_confirmed', 'completed', 'rejected')";
       }
     }
 
