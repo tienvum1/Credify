@@ -54,7 +54,7 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
 }
 
 // Test gửi email để debug
-exports.testEmail = async (req, res) => {
+const testEmail = async (req, res) => {
   const testEmail = req.query.email || process.env.EMAIL_USER;
   
   if (!testEmail) {
@@ -442,4 +442,4 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { register, verifyEmail, login, googleLogin, logout, getMe, forgotPassword, resetPassword, updateProfile, changePassword };
+module.exports = { register, verifyEmail, login, googleLogin, logout, getMe, forgotPassword, resetPassword, updateProfile, changePassword, testEmail };
