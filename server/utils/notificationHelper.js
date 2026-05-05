@@ -18,7 +18,9 @@ const transporter = nodemailer.createTransport({
   },
   connectionTimeout: 20000,
   greetingTimeout: 20000,
-  socketTimeout: 20000
+  socketTimeout: 20000,
+  // Ép buộc sử dụng IPv4
+  family: 4
 });
 
 /**

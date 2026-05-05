@@ -37,9 +37,11 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
     minVersion: 'TLSv1.2'
   },
-  connectionTimeout: 20000, // Tăng lên 20 giây
+  connectionTimeout: 20000,
   greetingTimeout: 20000,
-  socketTimeout: 20000
+  socketTimeout: 20000,
+  // Ép buộc sử dụng IPv4 để tránh lỗi ENETUNREACH trên một số server Cloud (Render)
+  family: 4 
 });
 
 // Kiểm tra cấu hình email ngay khi khởi động
@@ -96,7 +98,9 @@ const testEmail = async (req, res) => {
       code: error.code,
       config: {
         user: process.env.EMAIL_USER,
-        service: 'gmail'
+        host: 'smtp.gmail.com',
+        port: 587,
+        family: 4
       }
     });
   }
