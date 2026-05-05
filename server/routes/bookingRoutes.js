@@ -30,17 +30,17 @@ router.post(
   submitCustomerPaid
 );
 
-router.get("/staff", protect, authorize("staff"), staffGetBookings);
-router.get("/staff/stats", protect, authorize("staff"), getStaffStats);
-router.get("/staff/:id", protect, authorize("staff"), staffGetBookingDetail);
-router.patch("/:id/claim", protect, authorize("staff"), claimBooking);
+router.get("/staff", protect, authorize("staff", "admin_system"), staffGetBookings);
+router.get("/staff/stats", protect, authorize("staff", "admin_system"), getStaffStats);
+router.get("/staff/:id", protect, authorize("staff", "admin_system"), staffGetBookingDetail);
+router.patch("/:id/claim", protect, authorize("staff", "admin_system"), claimBooking);
 router.patch(
   "/:id/confirm",
   protect,
-  authorize("staff"),
+  authorize("staff", "admin_system"),
   upload.array("proof", 3),
   staffConfirmBooking
 );
-router.patch("/:id/reject", protect, authorize("staff"), staffRejectBooking);
+router.patch("/:id/reject", protect, authorize("staff", "admin_system"), staffRejectBooking);
 
 module.exports = router;

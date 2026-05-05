@@ -261,14 +261,9 @@
 .staff-cell {
     display: flex;
     align-items: center;
-    gap: 6px;
     font-size: 13px;
-    color: #6366f1;
+    color: #475569;
     font-weight: 600;
-    background: #f5f3ff;
-    padding: 4px 8px;
-    border-radius: 6px;
-    width: fit-content;
 }
 
 .no-staff {
@@ -277,33 +272,27 @@
     font-size: 13px;
 }
 
-.status-badge {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
+.status-text {
+    font-size: 12px;
+    font-weight: 800;
     text-transform: uppercase;
     display: inline-block;
 
     &.created {
-        background: #f1f5f9;
         color: #64748b;
     }
 
     &.customer_paid {
-        background: #fffbeb;
         color: #d97706;
     }
 
     &.staff_confirmed,
     &.completed {
-        background: #f0fdf4;
         color: #16a34a;
     }
 
     &.rejected,
     &.cancelled {
-        background: #fef2f2;
         color: #dc2626;
     }
 }
@@ -312,6 +301,38 @@
     display: flex;
     gap: 8px;
     justify-content: flex-start;
+
+    .claim-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: none;
+        background: #4f46e5;
+        color: white;
+
+        &:hover:not(:disabled) {
+            background: #4338ca;
+            transform: translateY(-1px);
+        }
+
+        &:disabled {
+            background: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        &.claimed {
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: default;
+        }
+    }
 
     .detail-view-btn {
         padding: 8px 16px;
@@ -369,46 +390,58 @@
 
                 td {
                     display: flex;
-                    flex-direction: row;
-                    padding: 0;
+                    flex-direction: row; // Chuyển sang 2 cột ngang
+                    padding: 10px 0; // Padding trên dưới cho mỗi hàng
                     border: none;
                     text-align: left;
                     align-items: flex-start;
-                    gap: 8px;
+                    gap: 12px;
+                    border-bottom: 1px dashed #f1f5f9; // Thêm đường kẻ giữa các hàng
 
                     &::before {
                         content: attr(data-label);
-                        width: 120px;
+                        width: 120px; // Cố định chiều rộng cột label
                         flex-shrink: 0;
                         font-size: 11px;
                         font-weight: 700;
-                        color: #64748b;
+                        color: #94a3b8; // Màu label như MyBookings
                         text-transform: uppercase;
                         padding-top: 3px;
+                        text-align: left;
+                    }
+
+                    &>div {
+                        flex: 1;
+                        min-width: 0;
+                        font-weight: 600; // Đậm hơn cho giá trị
+                        color: #1e293b;
+                        text-align: left; // Căn trái giá trị
                     }
 
                     &:last-child {
                         display: flex;
                         flex-direction: row;
                         justify-content: flex-end;
-                        margin-top: 8px;
-                        padding-top: 12px;
+                        margin-top: 12px;
+                        padding: 16px 0 0 0;
                         border-top: 1px solid #f1f5f9;
+                        border-bottom: none;
 
                         &::before {
                             display: none;
                         }
 
                         .row-actions {
-                            flex: none;
-                            width: auto;
-                            justify-content: flex-end;
-                        }
-                    }
+                            flex: 1;
+                            width: 100%;
+                            justify-content: stretch;
 
-                    &>div {
-                        flex: 1;
-                        min-width: 0;
+                            .detail-view-btn {
+                                width: 100%;
+                                justify-content: center;
+                                padding: 12px;
+                            }
+                        }
                     }
                 }
             }
@@ -458,4 +491,92 @@
     font-family: monospace;
     font-size: 13px;
     font-weight: 600;
+}
+
+// Modal styles
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 1500;
+}
+
+.confirm-modal-content {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 32px;
+    width: 320px;
+    max-width: 90vw;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    box-sizing: border-box;
+
+    h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    p {
+        margin: 0 0 32px;
+        color: #64748b;
+        line-height: 1.6;
+        font-size: 15px;
+    }
+
+    .confirm-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .confirm-btn {
+            background: #4f46e5;
+            color: white;
+
+            &:hover {
+                background: #4338ca;
+            }
+        }
+
+        .cancel-btn {
+            background: #f1f5f9;
+            color: #64748b;
+
+            &:hover {
+                background: #e2e8f0;
+                color: #0f172a;
+            }
+        }
+    }
+}
+
+@keyframes modal-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }

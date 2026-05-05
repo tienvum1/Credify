@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../../api/axios';
+import { toast } from 'react-hot-toast';
 import './AdminBookingDetail.scss';
 
 const AdminBookingDetail = () => {
@@ -8,7 +9,11 @@ const AdminBookingDetail = () => {
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
+  const [staffProofs, setStaffProofs] = useState([]);
+  const [staffProofPreviews, setStaffProofPreviews] = useState([]);
 
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
@@ -33,7 +38,7 @@ const AdminBookingDetail = () => {
       cancelled: 'Đã hủy'
     };
     const label = labels[status] || status;
-    return <span className={`status-badge ${status}`}>{label}</span>;
+    return <span className={`status-text ${status}`}>{label}</span>;
   };
 
   const shortCode = (code) => {
@@ -41,19 +46,27 @@ const AdminBookingDetail = () => {
     return raw.length <= 6 ? raw : raw.slice(-6);
   };
 
+  const fetchDetail = async () => {
+    const res = await api.get(`/bookings/staff/${id}`);
+    setBooking(res.data);
+  };
+
   useEffect(() => {
     let active = true;
     
     const loadData = async () => {
       try {
-        const res = await api.get(`/bookings/staff/${id}`);
-        if (active) {
-          setBooking(res.data);
-        }
+        const [bookingRes, userRes] = await Promise.all([
+          api.get(`/bookings/staff/${id}`),
+          api.get('/auth/me')
+        ]);
+        
+        if (!active) return;
+        setBooking(bookingRes.data);
+        setCurrentUser(userRes.data.user);
       } catch {
-        if (active) {
-          navigate('/admin/bookings');
-        }
+        if (!active) return;
+        navigate('/admin/bookings');
       } finally {
         if (active) setLoading(false);
       }
@@ -64,6 +77,82 @@ const AdminBookingDetail = () => {
       active = false;
     };
   }, [id, navigate]);
+
+  const handleStaffFileChange = (e) => {
+    const newFiles = Array.from(e.target.files);
+    const updatedFiles = [...staffProofs, ...newFiles].slice(0, 3);
+    setStaffProofs(updatedFiles);
+    
+    const generatePreviews = async () => {
+      const previews = await Promise.all(
+        updatedFiles.map((file) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+      setStaffProofPreviews(previews);
+    };
+
+    generatePreviews();
+  };
+
+  const removeStaffProof = (index) => {
+    const newFiles = [...staffProofs];
+    newFiles.splice(index, 1);
+    setStaffProofs(newFiles);
+
+    const newPreviews = [...staffProofPreviews];
+    newPreviews.splice(index, 1);
+    setStaffProofPreviews(newPreviews);
+  };
+
+  const handleConfirm = async () => {
+    if (!booking) return;
+    if (staffProofs.length === 0) {
+      toast.error('Vui lòng tải ít nhất một ảnh bill chuyển tiền');
+      return;
+    }
+    
+    setUpdating(true);
+    try {
+      const formData = new FormData();
+      staffProofs.forEach(file => {
+        formData.append('proof', file);
+      });
+
+      await api.patch(`/bookings/${booking.id}/confirm`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Xác nhận đơn hàng thành công');
+      setStaffProofs([]);
+      setStaffProofPreviews([]);
+      await fetchDetail();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi xác nhận đơn');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!booking) return;
+    const note = window.prompt('Nhập lý do từ chối đơn:');
+    if (note === null || !note.trim()) return;
+
+    setUpdating(true);
+    try {
+      await api.patch(`/bookings/${booking.id}/reject`, { note: note.trim() });
+      toast.success('Đã từ chối đơn hàng');
+      await fetchDetail();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi từ chối đơn');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   if (loading) return <div className="booking-detail-loading">Đang tải dữ liệu đơn hàng...</div>;
   if (!booking) return <div className="booking-detail-loading">Không tìm thấy đơn</div>;
@@ -139,6 +228,61 @@ const AdminBookingDetail = () => {
           )}
         </tbody>
       </table>
+
+      {booking.status === 'customer_paid' && Number(booking.staff_id) === Number(currentUser?.id) && (
+        <div className="staff-upload-section">
+          <h3>Tải bill chuyển tiền cho khách (Tối đa 3 ảnh)</h3>
+          
+          <div className="staff-upload-grid">
+            {staffProofPreviews.map((preview, idx) => (
+              <div key={idx} className="staff-proof-preview-container">
+                <img src={preview} alt={`Preview ${idx}`} className="staff-proof-preview-img" />
+                <button 
+                  type="button" 
+                  className="remove-staff-proof-btn" 
+                  onClick={() => removeStaffProof(idx)}
+                  title="Xóa ảnh"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            
+            {staffProofPreviews.length < 3 && (
+              <label className="staff-file-upload-box">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  onChange={handleStaffFileChange}
+                  hidden 
+                />
+                <div className="upload-placeholder">
+                  <span className="plus">+</span>
+                  <span>Thêm ảnh</span>
+                </div>
+              </label>
+            )}
+          </div>
+
+          <div className="detail-actions">
+            <button 
+              className="confirm-btn" 
+              onClick={handleConfirm}
+              disabled={updating || staffProofs.length === 0}
+            >
+              {updating ? 'Đang xử lý...' : 'Xác nhận hoàn thành & Gửi bill'}
+            </button>
+            <button 
+              className="reject-btn" 
+              onClick={handleReject}
+              disabled={updating}
+            >
+              Từ chối đơn
+            </button>
+          </div>
+        </div>
+      )}
 
       {previewImageUrl && (
         <div className="image-preview-overlay" onClick={() => setPreviewImageUrl(null)}>

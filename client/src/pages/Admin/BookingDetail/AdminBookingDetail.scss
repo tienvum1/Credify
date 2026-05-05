@@ -131,38 +131,181 @@
       font-size: 13px;
       padding-right: 12px;
     }
+  }
+}
 
-    .status-badge {
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      display: inline-block;
+.status-text {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  display: inline-block;
 
-      &.created {
-        background: #f1f5f9;
-        color: #64748b;
-      }
+  &.created {
+    color: #475569;
+  }
 
-      &.customer_paid {
-        background: #fffbeb;
-        color: #d97706;
-      }
+  &.customer_paid {
+    color: #b45309;
+  }
 
-      &.staff_confirmed,
-      &.completed {
-        background: #f0fdf4;
-        color: #16a34a;
-      }
+  &.staff_confirmed,
+  &.completed {
+    color: #15803d;
+  }
 
-      &.rejected,
-      &.cancelled {
-        background: #fef2f2;
-        color: #dc2626;
+  &.rejected,
+  &.cancelled {
+    color: #b91c1c;
+  }
+}
+
+.staff-upload-section {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 24px;
+  text-align: left;
+  box-sizing: border-box;
+
+  h3 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #475569;
+    font-weight: 700;
+  }
+
+  .staff-upload-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .staff-proof-preview-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #e2e8f0;
+
+    .staff-proof-preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .remove-staff-proof-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #ef4444;
       }
     }
   }
+
+  .staff-file-upload-box {
+    width: 120px;
+    height: 120px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #ffffff;
+
+    &:hover {
+      border-color: #6366f1;
+      background: #f5f3ff;
+    }
+
+    .upload-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 12px;
+      text-align: center;
+
+      .plus {
+        font-size: 24px;
+        line-height: 1;
+      }
+    }
+  }
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+
+  .confirm-btn,
+  .reject-btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
+
+  .confirm-btn {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: white;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+    }
+  }
+
+  .reject-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+    }
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+.mono {
+  font-family: monospace;
+  font-weight: 600;
 }
 
 // Proof Images Styles

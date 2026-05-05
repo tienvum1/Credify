@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Clock, CheckCircle2,
-  XCircle, UserPlus, Users, Search, Eye
+  XCircle, UserPlus,  Search
 } from 'lucide-react';
 import api from '../../../api/axios';
+import { toast } from 'react-hot-toast';
 import './AdminBookingManager.scss';
 
 const AdminBookingManager = () => {
@@ -24,6 +25,12 @@ const AdminBookingManager = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    bookingId: null,
+    shortCode: ''
+  });
+
   const dateOptions = [
     { label: 'Tất cả thời gian', value: 'all' },
     { label: 'Hôm nay', value: 'today' },
@@ -42,13 +49,18 @@ const AdminBookingManager = () => {
 
   const fetchBookings = async () => {
     try {
-      // Admin lấy toàn bộ đơn hàng
+      // Admin lấy toàn bộ đơn hàng (sử dụng API của staff nhưng với quyền admin)
       const res = await api.get('/bookings/staff', { 
-        params: statusFilter === 'all' ? {} : { status: statusFilter } 
+        params: {
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: 1000 // Lấy số lượng lớn để filter client-side như logic cũ của Admin
+        }
       });
-      setBookings(res.data);
+      // API trả về { data: [], total: ... }
+      setBookings(Array.isArray(res.data.data) ? res.data.data : []);
     } catch (err) {
       console.error('Lỗi lấy danh sách đơn:', err);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -130,6 +142,17 @@ const AdminBookingManager = () => {
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
     window.scrollTo(0, 0);
+  };
+
+  const handleClaim = async (id) => {
+    try {
+      await api.patch(`/bookings/${id}/claim`);
+      toast.success('Đã nhận xử lý đơn hàng');
+      setConfirmModal({ isOpen: false, bookingId: null, shortCode: '' });
+      navigate(`/admin/bookings/${id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi nhận đơn');
+    }
   };
 
   if (loading) return <div className="loading">Đang tải dữ liệu hệ thống...</div>;
@@ -325,7 +348,6 @@ const AdminBookingManager = () => {
                   <td data-label="Nhân viên">
                     {b.staff_id ? (
                       <div className="staff-cell">
-                        <Users size={14} />
                         <span>{b.staff_name || `ID: ${b.staff_id}`}</span>
                       </div>
                     ) : (
@@ -333,7 +355,7 @@ const AdminBookingManager = () => {
                     )}
                   </td>
                   <td data-label="Trạng thái" className="th-status">
-                    <span className={`status-badge ${b.status}`}>{statusLabel(b.status)}</span>
+                    <span className={`status-text ${b.status}`}>{statusLabel(b.status)}</span>
                   </td>
                   <td data-label="Thời gian" className="td-date">
                     <div className="date-cell">
@@ -342,8 +364,25 @@ const AdminBookingManager = () => {
                   </td>
                   <td>
                     <div className="row-actions">
+                      {['created', 'customer_paid'].includes(b.status) && (
+                        <button 
+                          className={`claim-btn ${b.staff_id ? 'claimed' : ''}`} 
+                          onClick={() => {
+                            if (!b.staff_id) {
+                              setConfirmModal({
+                                isOpen: true,
+                                bookingId: b.id,
+                                shortCode: shortCode(b.code)
+                              });
+                            }
+                          }}
+                          disabled={!!b.staff_id}
+                        >
+                          {b.staff_id ? 'Đang xử lý' : 'Xử lý'}
+                        </button>
+                      )}
                       <button className="detail-view-btn" onClick={() => navigate(`/admin/bookings/${b.id}`)}>
-                        <Eye size={16} />
+      
                         <span>Chi tiết</span>
                       </button>
                     </div>
@@ -356,6 +395,29 @@ const AdminBookingManager = () => {
       </div>
 
       {renderPagination()}
+
+      {confirmModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="confirm-modal-content">
+            <h3>Xác nhận xử lý đơn</h3>
+            <p>Bạn có chắc chắn muốn nhận xử lý đơn hàng <strong>{confirmModal.shortCode}</strong> không?</p>
+            <div className="confirm-actions">
+              <button 
+                className="cancel-btn" 
+                onClick={() => setConfirmModal({ isOpen: false, bookingId: null, shortCode: '' })}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                className="confirm-btn" 
+                onClick={() => handleClaim(confirmModal.bookingId)}
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

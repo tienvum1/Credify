@@ -171,28 +171,28 @@ const RevenueReport = () => {
               <span className="label">Tổng doanh thu ({periodLabel})</span>
               <p className="value">{formatCurrency(totalRevenue)}</p>
             </div>
-            <div className="stat-icon-bg">💰</div>
+
           </div>
           <div className="stat-card fee">
             <div className="stat-info">
               <span className="label">Tổng phí thu về ({periodLabel})</span>
               <p className="value">{formatCurrency(totalFee)}</p>
             </div>
-            <div className="stat-icon-bg">🎟️</div>
+          
           </div>
           <div className="stat-card orders">
             <div className="stat-info">
               <span className="label">Đơn hoàn thành ({periodLabel})</span>
               <p className="value">{totalOrders.toLocaleString()} <small>đơn</small></p>
             </div>
-            <div className="stat-icon-bg">📦</div>
+
           </div>
           <div className="stat-card avg">
             <div className="stat-info">
               <span className="label">Doanh thu TB/đơn ({periodLabel})</span>
               <p className="value">{formatCurrency(avgOrder)}</p>
             </div>
-            <div className="stat-icon-bg">📈</div>
+
           </div>
         </div>
 
@@ -248,6 +248,55 @@ const RevenueReport = () => {
           </div>
         </div>
 
+        {/* Bảng chi tiết theo từng Nhân viên được đưa lên trước bảng QR */}
+        {isGlobal && sectionData.byStaff && sectionData.byStaff.length > 0 && (
+          <div className="table-card staff-revenue-table">
+            <div className="card-header">
+              <div className="header-left">
+                <h3>Bảng chi tiết theo từng Nhân viên ({fullPeriodLabel})</h3>
+                <p>Danh sách tổng hợp hiệu suất của các nhân viên trong kỳ</p>
+              </div>
+            </div>
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Nhân viên</th>
+                    <th>Tổng đơn</th>
+                    <th>Thành công</th>
+                    <th>Hủy/Từ chối</th>
+                    <th>Doanh thu</th>
+                    <th>Phí thu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionData.byStaff.map((staff, idx) => (
+                    <tr key={idx}>
+                      <td data-label="Thời gian"><strong>{formatDateDisplay(staff.label)}</strong></td>
+                      <td data-label="Nhân viên">
+                        <div className="staff-info-cell">
+                          <strong>{staff.staff_name}</strong>
+                          <small>ID: #{staff.staff_id}</small>
+                        </div>
+                      </td>
+                      <td data-label="Tổng đơn">{staff.total_count.toLocaleString()}</td>
+                      <td data-label="Thành công" className="text-success">{staff.completed_count.toLocaleString()}</td>
+                      <td data-label="Hủy/Từ chối" className="text-danger">{(staff.cancelled_count + staff.rejected_count).toLocaleString()}</td>
+                      <td data-label="Doanh thu" className="text-revenue font-bold">
+                        <div>{formatCurrency(staff.total_amount)}</div>
+                      </td>
+                      <td data-label="Phí thu" className="text-fee">
+                        <div>{formatCurrency(staff.total_fee)}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="table-card">
           <div className="card-header">
             <div className="header-left">
@@ -302,54 +351,6 @@ const RevenueReport = () => {
             </table>
           </div>
         </div>
-
-        {isGlobal && sectionData.byStaff && sectionData.byStaff.length > 0 && (
-          <div className="table-card staff-revenue-table">
-            <div className="card-header">
-              <div className="header-left">
-                <h3>Bảng chi tiết theo từng Nhân viên ({fullPeriodLabel})</h3>
-                <p>Danh sách tổng hợp hiệu suất của các nhân viên trong kỳ</p>
-              </div>
-            </div>
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Thời gian</th>
-                    <th>Nhân viên</th>
-                    <th>Tổng đơn</th>
-                    <th>Thành công</th>
-                    <th>Hủy/Từ chối</th>
-                    <th>Doanh thu</th>
-                    <th>Phí thu</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sectionData.byStaff.map((staff, idx) => (
-                    <tr key={idx}>
-                      <td data-label="Thời gian"><strong>{formatDateDisplay(staff.label)}</strong></td>
-                      <td data-label="Nhân viên">
-                        <div className="staff-info-cell">
-                          <strong>{staff.staff_name}</strong>
-                          <small>ID: #{staff.staff_id}</small>
-                        </div>
-                      </td>
-                      <td data-label="Tổng đơn">{staff.total_count.toLocaleString()}</td>
-                      <td data-label="Thành công" className="text-success">{staff.completed_count.toLocaleString()}</td>
-                      <td data-label="Hủy/Từ chối" className="text-danger">{(staff.cancelled_count + staff.rejected_count).toLocaleString()}</td>
-                      <td data-label="Doanh thu" className="text-revenue font-bold">
-                        <div>{formatCurrency(staff.total_amount)}</div>
-                      </td>
-                      <td data-label="Phí thu" className="text-fee">
-                        <div>{formatCurrency(staff.total_fee)}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
