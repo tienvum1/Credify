@@ -27,21 +27,19 @@ if (!isProduction) {
 // Cấu hình Mail Transporter tối ưu cho Cloud (Render/Vercel)
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // false cho cổng 587
+  port: 465,
+  secure: true, // Bắt buộc true cho cổng 465
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
   tls: {
-    rejectUnauthorized: false,
-    minVersion: 'TLSv1.2'
+    rejectUnauthorized: false
   },
   connectionTimeout: 20000,
   greetingTimeout: 20000,
   socketTimeout: 20000,
-  // Ép buộc sử dụng IPv4 để tránh lỗi ENETUNREACH trên một số server Cloud (Render)
-  family: 4 
+  family: 4 // Ép buộc sử dụng IPv4
 });
 
 // Kiểm tra cấu hình email ngay khi khởi động
@@ -99,8 +97,9 @@ const testEmail = async (req, res) => {
       config: {
         user: process.env.EMAIL_USER,
         host: 'smtp.gmail.com',
-        port: 587,
-        family: 4
+        port: 465,
+        family: 4,
+        secure: true
       }
     });
   }
