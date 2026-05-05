@@ -14,6 +14,8 @@ const {
   staffGetBookingDetail,
   staffConfirmBooking,
   staffRejectBooking,
+  getStaffStats,
+  claimBooking,
 } = require("../controllers/bookingController");
 
 const upload = multer({ storage });
@@ -29,7 +31,9 @@ router.post(
 );
 
 router.get("/staff", protect, authorize("staff"), staffGetBookings);
+router.get("/staff/stats", protect, authorize("staff"), getStaffStats);
 router.get("/staff/:id", protect, authorize("staff"), staffGetBookingDetail);
+router.patch("/:id/claim", protect, authorize("staff"), claimBooking);
 router.patch("/:id/confirm", protect, authorize("staff"), staffConfirmBooking);
 router.patch("/:id/reject", protect, authorize("staff"), staffRejectBooking);
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, LogOut, Settings, HelpCircle, Menu, X, BarChart2, ShoppingCart, ReceiptEuro, LayoutDashboard, Bell } from 'lucide-react';
+import { User, LogOut, Settings, HelpCircle, Menu, X, BarChart2, ShoppingCart,  LayoutDashboard } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
 import './Header.scss';
 
@@ -62,7 +62,7 @@ const Header = ({ user, handleLogout }) => {
                   </Link>
                   {user?.role === 'user' && (
                     <Link to="/my-bookings" className="dropdown-item">
-                      <ReceiptEuro size={16} /> Đơn của tôi
+                      <ShoppingCart size={16} /> Đơn của tôi
                     </Link>
                   )}
                   {user?.role === 'admin_system' && (
@@ -80,25 +80,8 @@ const Header = ({ user, handleLogout }) => {
                       </Link>
                     </>
                   )}
-        
-                  {user?.role === 'admin_system' && (
-                    <>
-                      <Link to="/admin/bookings" className="dropdown-item">
-                        <ReceiptEuro size={16} /> Quản lý hệ thống
-                      </Link>
-                      <Link to="/admin/notifications" className="dropdown-item">
-                        <Bell size={16} /> Thông báo hệ thống
-                      </Link>
-                    </>
-                  )}
-                  {user?.role === 'staff' && (
-                    <>
-                      <Link to="/staff/notifications" className="dropdown-item">
-                        <Bell size={16} /> Thông báo hệ thống
-                      </Link>
-                    </>
-                  )}
-               
+      
+              
                   <Link to="/settings" className="dropdown-item">
                     <Settings size={16} /> Cài đặt
                   </Link>
