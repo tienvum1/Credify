@@ -26,14 +26,20 @@ if (!isProduction) {
 
 // Cấu hình Mail Transporter tối ưu cho Cloud (Render/Vercel)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // false cho cổng 587
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  connectionTimeout: 10000, // 10 giây
-  greetingTimeout: 10000,
-  socketTimeout: 10000
+  tls: {
+    rejectUnauthorized: false,
+    minVersion: 'TLSv1.2'
+  },
+  connectionTimeout: 20000, // Tăng lên 20 giây
+  greetingTimeout: 20000,
+  socketTimeout: 20000
 });
 
 // Kiểm tra cấu hình email ngay khi khởi động
@@ -68,17 +74,10 @@ const testEmail = async (req, res) => {
   try {
     console.log(`Đang bắt đầu test email tới: ${testEmail}...`);
     
-    // Kiểm tra kết nối trước với timeout
-    console.log('1. Đang kiểm tra kết nối SMTP...');
-    await Promise.race([
-      transporter.verify(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Kết nối SMTP quá lâu (Timeout)')), 8000))
-    ]);
-    
-    // Thử gửi mail
-    console.log('2. Kết nối OK, đang gửi email thử nghiệm...');
+    // Gửi thẳng mail, nodemailer sẽ tự quản lý kết nối và timeout
+    console.log('Đang thực hiện gửi email thử nghiệm...');
     const info = await transporter.sendMail(mailOptions);
-    console.log('3. Gửi email thành công:', info.messageId);
+    console.log('Gửi email thành công:', info.messageId);
     
     res.json({
       status: 'success',
