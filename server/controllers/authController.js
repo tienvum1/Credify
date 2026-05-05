@@ -24,50 +24,49 @@ if (!isProduction) {
 
 // Test gửi email để debug trên Production
 const testEmail = async (req, res) => {
-  const targetEmail = req.query.email || process.env.GMAIL_USER || process.env.EMAIL_USER;
+  const targetEmail = req.query.email || process.env.RESEND_FROM_EMAIL || process.env.FROM_EMAIL;
   
   if (!targetEmail) {
     return res.status(400).json({ 
       status: 'error',
-      message: 'Vui lòng cung cấp email nhận (?email=...) hoặc cấu hình GMAIL_USER trong .env' 
+      message: 'Vui lòng cung cấp email nhận (?email=...) hoặc cấu hình RESEND_FROM_EMAIL trong .env' 
     });
   }
 
   try {
-    console.log(`--- Đang thực hiện gửi email test tới: ${targetEmail} ---`);
-    const info = await sendEmail({
+    console.log(`--- Đang thực hiện gửi email test qua Resend tới: ${targetEmail} ---`);
+    const data = await sendEmail({
       to: targetEmail,
-      subject: `[PRODUCTION TEST] Kiểm tra hệ thống Email - ${new Date().toLocaleString('vi-VN')}`,
+      subject: `[RESEND TEST] Kiểm tra hệ thống Email - ${new Date().toLocaleString('vi-VN')}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #4f46e5; text-align: center;">Hệ thống Email hoạt động tốt!</h2>
-          <p>Chúc mừng! Bạn nhận được thư này có nghĩa là hệ thống gửi mail trên Production đã được cấu hình chính xác.</p>
+          <h2 style="color: #4f46e5; text-align: center;">Hệ thống Resend hoạt động tốt!</h2>
+          <p>Chúc mừng! Bạn nhận được thư này có nghĩa là Resend đã được cấu hình chính xác.</p>
           <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 5px 0;"><strong>Môi trường:</strong> Production</p>
+            <p style="margin: 5px 0;"><strong>Dịch vụ:</strong> Resend API</p>
             <p style="margin: 5px 0;"><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
-            <p style="margin: 5px 0;"><strong>Sender:</strong> ${process.env.GMAIL_USER || process.env.EMAIL_USER}</p>
+            <p style="margin: 5px 0;"><strong>Sender:</strong> ${process.env.RESEND_FROM_EMAIL}</p>
           </div>
           <p style="color: #64748b; font-size: 14px;">Thư này được gửi từ API test-email. Nếu bạn không phải là người quản trị, vui lòng bỏ qua.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
           <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
         </div>
-      `
+      `,
+      text: `Hệ thống Resend hoạt động tốt! Bạn nhận được thư này có nghĩa là Resend đã được cấu hình chính xác.`
     });
 
-    console.log('✅ Gửi email test thành công:', info.messageId);
     res.json({ 
       status: 'success', 
-      message: `Đã gửi email kiểm tra tới ${targetEmail} thành công!`, 
-      messageId: info.messageId,
+      message: `Đã gửi email kiểm tra tới ${targetEmail} thành công qua Resend!`, 
+      id: data?.id,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ LỖI GỬI MAIL TEST:', error);
+    console.error('❌ LỖI GỬI MAIL RESEND:', error);
     res.status(500).json({ 
       status: 'error', 
-      message: 'Gửi mail thất bại', 
-      error: error.message,
-      hint: 'Hãy kiểm tra lại GMAIL_APP_PASSWORD và đảm bảo đã bật "Xác thực 2 lớp" cho tài khoản Gmail.'
+      message: 'Gửi mail thất bại qua Resend', 
+      error: error.message
     });
   }
 };
@@ -114,9 +113,9 @@ const register = async (req, res) => {
     // Gửi email xác nhận
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email/${verificationToken}`;
 
-    sendEmail({
+    await sendEmail({
       to: email,
-      subject: 'Xác nhận đăng ký tài khoản',
+      subject: 'Xác nhận đăng ký tài khoản - Credify',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #4f46e5; text-align: center;">Chào mừng bạn đến với Credify!</h2>
@@ -126,11 +125,12 @@ const register = async (req, res) => {
           </div>
           <p style="color: #64748b; font-size: 14px;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} Credify.vn. All rights reserved.</p>
         </div>
       `
-    }).then(info => console.log("Email xác nhận đã gửi:", info.messageId))
-      .catch(err => console.error("LỖI GỬI MAIL XÁC NHẬN:", err.message));
+    });
+    
+    console.log("Email xác nhận đã gửi thành công tới:", email);
 
     res.status(201).json({ message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' });
   } catch (err) {
@@ -269,6 +269,7 @@ const getMe = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
+  console.log('GỢI Ý: Gửi yêu cầu khôi phục mật khẩu cho email:', email);
   try {
     const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     if (users.length === 0) return res.status(404).json({ message: 'Email không tồn tại' });
@@ -284,25 +285,25 @@ const forgotPassword = async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}`;
     
     // Gửi email khôi phục mật khẩu
-    sendEmail({
+    await sendEmail({
       to: email,
-      subject: 'Khôi phục mật khẩu',
+      subject: 'Khôi phục mật khẩu - Credify',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #4f46e5; text-align: center;">Khôi phục mật khẩu</h2>
           <p>Chào bạn,</p>
-          <p>Bạn nhận được email này vì chúng tôi đã nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn tại Credify.vn. Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
+          <p>Bạn nhận được email này vì chúng tôi đã nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn tại <strong>Credify.vn</strong>. Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Đặt lại mật khẩu</a>
           </div>
-          <p style="color: #64748b; font-size: 14px;">Link này sẽ hết hạn sau 1 giờ. Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
+          <p style="color: #64748b; font-size: 14px;">Link này sẽ hết hạn sau <strong>1 giờ</strong>. Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} Credify.vn. All rights reserved.</p>
         </div>
       `
-    }).then(info => console.log("Email khôi phục đã gửi:", info.messageId))
-      .catch(err => console.error("LỖI GỬI MAIL KHÔI PHỤC:", err.message));
+    });
 
+    console.log("Email khôi phục đã gửi thành công tới:", email);
     res.json({ message: 'Link khôi phục mật khẩu đã được gửi vào email của bạn.' });
   } catch (err) {
     console.error(err);

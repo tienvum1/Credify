@@ -53,7 +53,9 @@ if (!fs.existsSync(uploadDir)) {
 const allowedOrigins = [
   'http://localhost:5173',
   'https://credify-awqh.vercel.app',
-  'https://credify-awqh-tienvum1s-projects.vercel.app'
+  'https://credify-awqh-tienvum1s-projects.vercel.app',
+  "https://credifyapp.site",
+  "https://www.credifyapp.site"
 ];
 
 app.use(cors({

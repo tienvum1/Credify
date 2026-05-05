@@ -1,32 +1,34 @@
-const nodemailer = require("nodemailer");
+const sgMail = require('@sendgrid/mail');
 
-// 1. Create reusable transporter (only once)
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL
-  auth: {
-    user: process.env.GMAIL_USER || process.env.EMAIL_USER,
-    pass: (process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, ""), // Loại bỏ khoảng trắng nếu có
-  },
-  tls: {
-    rejectUnauthorized: false // Giúp tránh lỗi chứng chỉ trên một số môi trường hosting
-  }
-});
+// Cấu hình API Key cho SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const sendEmail = async ({ from, to, subject, html }) => {
+/**
+ * Utility gửi email sử dụng SendGrid API (Vượt qua tường lửa của Render/Vercel)
+ * @param {Object} options - { to, subject, html }
+ */
+const sendEmail = async ({ to, subject, html }) => {
+  const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'tienvukk8@gmail.com';
+  
+  const msg = {
+    to,
+    from: {
+      email: fromEmail,
+      name: process.env.FROM_NAME || 'Credify'
+    },
+    subject,
+    html,
+  };
+
   try {
-    const info = await transporter.sendMail({
-      from: from || `"${process.env.FROM_NAME || 'Credify'}" <${process.env.GMAIL_USER || process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    });
-
-    console.log("Email sent:", info.messageId);
-    return info;
+    const response = await sgMail.send(msg);
+    console.log('✅ SendGrid API: Email sent successfully to', to);
+    return response[0];
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error('❌ SendGrid API Error:', error.message);
+    if (error.response) {
+      console.error('Chi tiết lỗi:', JSON.stringify(error.response.body, null, 2));
+    }
     throw error;
   }
 };

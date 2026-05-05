@@ -5,7 +5,7 @@ const { sendEmail } = require("./sendEmail");
  * Gửi email thông báo đơn hàng
  */
 const sendBookingEmail = async (email, subject, booking, type, extraInfo = '') => {
-  if (!email || (!process.env.EMAIL_USER && !process.env.GMAIL_USER) || (!process.env.EMAIL_PASS && !process.env.GMAIL_APP_PASSWORD)) return;
+  if (!email || !process.env.SENDGRID_API_KEY) return;
 
   const shortCode = booking.code.slice(-6);
   const amountStr = Math.round(booking.transfer_amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
