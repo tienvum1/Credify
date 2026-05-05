@@ -22,29 +22,52 @@ if (!isProduction) {
   cookieOptions.sameSite = 'lax';
 }
 
-// Test gửi email để debug
+// Test gửi email để debug trên Production
 const testEmail = async (req, res) => {
-  const testEmail = req.query.email || process.env.EMAIL_USER;
-  console.log('testEmail:', testEmail);
+  const targetEmail = req.query.email || process.env.GMAIL_USER || process.env.EMAIL_USER;
   
-  if (!testEmail) {
-    return res.status(400).json({ message: 'Vui lòng cung cấp email (?email=...)' });
+  if (!targetEmail) {
+    return res.status(400).json({ 
+      status: 'error',
+      message: 'Vui lòng cung cấp email nhận (?email=...) hoặc cấu hình GMAIL_USER trong .env' 
+    });
   }
 
   try {
+    console.log(`--- Đang thực hiện gửi email test tới: ${targetEmail} ---`);
     const info = await sendEmail({
-      to: testEmail,
-      subject: 'Test Email (Gmail SMTP)',
-      html: 'Nếu bạn thấy thư này, Gmail SMTP đã hoạt động trên Vercel!'
+      to: targetEmail,
+      subject: `[PRODUCTION TEST] Kiểm tra hệ thống Email - ${new Date().toLocaleString('vi-VN')}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #4f46e5; text-align: center;">Hệ thống Email hoạt động tốt!</h2>
+          <p>Chúc mừng! Bạn nhận được thư này có nghĩa là hệ thống gửi mail trên Production đã được cấu hình chính xác.</p>
+          <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Môi trường:</strong> Production</p>
+            <p style="margin: 5px 0;"><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+            <p style="margin: 5px 0;"><strong>Sender:</strong> ${process.env.GMAIL_USER || process.env.EMAIL_USER}</p>
+          </div>
+          <p style="color: #64748b; font-size: 14px;">Thư này được gửi từ API test-email. Nếu bạn không phải là người quản trị, vui lòng bỏ qua.</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
+        </div>
+      `
     });
-    res.json({ status: 'success', message: `Đã gửi tới ${testEmail}`, messageId: info.messageId });
+
+    console.log('✅ Gửi email test thành công:', info.messageId);
+    res.json({ 
+      status: 'success', 
+      message: `Đã gửi email kiểm tra tới ${targetEmail} thành công!`, 
+      messageId: info.messageId,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('LỖI GỬI MAIL:', error);
+    console.error('❌ LỖI GỬI MAIL TEST:', error);
     res.status(500).json({ 
       status: 'error', 
       message: 'Gửi mail thất bại', 
-      details: error.message,
-      hint: 'Nếu chạy trên Vercel/Render, có thể cổng SMTP đã bị chặn.'
+      error: error.message,
+      hint: 'Hãy kiểm tra lại GMAIL_APP_PASSWORD và đảm bảo đã bật "Xác thực 2 lớp" cho tài khoản Gmail.'
     });
   }
 };
