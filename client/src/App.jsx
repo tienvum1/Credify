@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import api from './api/axios';
+import { initSocket, disconnectSocket } from './utils/socket';
 import Login from './pages/Auth/Login/Login';
 import Register from './pages/Auth/Register/Register';
 import VerifyEmail from './pages/Auth/VerifyEmail/VerifyEmail';
@@ -57,18 +58,28 @@ function App() {
     // Kiểm tra phiên đăng nhập qua Cookie
     api.get('/auth/me')
       .then(res => {
-        setUser(res.data.user);
+        const userData = res.data.user;
+        setUser(userData);
         setLoading(false);
+        // Khởi tạo Socket khi có user
+        if (userData) {
+          initSocket(userData);
+        }
       })
       .catch(() => {
         setUser(null);
         setLoading(false);
       });
+
+    return () => {
+      disconnectSocket();
+    };
   }, []);
 
   const handleLogout = async () => {
     try {
       await api.get('/auth/logout');
+      disconnectSocket();
       setUser(null);
       window.location.href = '/login';
     } catch (err) {

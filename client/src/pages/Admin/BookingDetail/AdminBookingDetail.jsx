@@ -14,6 +14,7 @@ const AdminBookingDetail = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [staffProofs, setStaffProofs] = useState([]);
   const [staffProofPreviews, setStaffProofPreviews] = useState([]);
+  const [confirmValidityModal, setConfirmValidityModal] = useState({ isOpen: false, value: null });
 
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
@@ -31,7 +32,7 @@ const AdminBookingDetail = () => {
   const statusLabel = (status) => {
     const labels = {
       created: 'Mới tạo',
-      customer_paid: 'Khách đã thanh toán',
+      customer_paid: 'Đang xử lý',
       staff_confirmed: 'Hoàn thành',
       completed: 'Hoàn thành',
       rejected: 'Đã từ chối',
@@ -154,6 +155,26 @@ const AdminBookingDetail = () => {
     }
   };
 
+  const handleUpdateValidity = (isValid) => {
+    if (!booking) return;
+    setConfirmValidityModal({ isOpen: true, value: isValid });
+  };
+
+  const confirmUpdateValidity = async () => {
+    const isValid = confirmValidityModal.value;
+    setConfirmValidityModal({ isOpen: false, value: null });
+    setUpdating(true);
+    try {
+      await api.patch(`/bookings/${booking.id}/validity`, { is_valid: isValid });
+      toast.success(`Đã xác nhận: ${isValid === 'yes' ? 'CÓ' : 'KHÔNG'}`);
+      await fetchDetail();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật xác nhận');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) return <div className="booking-detail-loading">Đang tải dữ liệu đơn hàng...</div>;
   if (!booking) return <div className="booking-detail-loading">Không tìm thấy đơn</div>;
 
@@ -193,6 +214,35 @@ const AdminBookingDetail = () => {
           <tr><th>Xác nhận lúc</th><td data-label="Xác nhận lúc">{formatDateTime(booking.confirmed_at)}</td></tr>
           <tr><th>Cập nhật lúc</th><td data-label="Cập nhật lúc">{formatDateTime(booking.updated_at)}</td></tr>
           <tr><th>Trạng thái</th><td data-label="Trạng thái">{statusLabel(booking.status)}</td></tr>
+          
+          {booking.staff_id && (
+            <tr>
+              <th>Xác nhận (Có/Không)</th>
+              <td data-label="Xác nhận">
+                <div className="validity-actions">
+                  <button 
+                    className={`valid-btn yes ${booking.is_valid === 'yes' ? 'active' : ''}`}
+                    onClick={() => handleUpdateValidity('yes')}
+                    disabled={updating || booking.is_valid !== null}
+                    title={booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                  >
+                    CÓ
+                  </button>
+                  <button 
+                    className={`valid-btn no ${booking.is_valid === 'no' ? 'active' : ''}`}
+                    onClick={() => handleUpdateValidity('no')}
+                    disabled={updating || booking.is_valid !== null}
+                    title={booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                  >
+                    KHÔNG
+                  </button>
+                  {booking.is_valid === null && <span className="validity-hint">(Chưa xác nhận)</span>}
+                  {booking.is_valid !== null && <span className="validity-hint confirmed">✓ Đã xác nhận: {booking.is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}</span>}
+                </div>
+              </td>
+            </tr>
+          )}
+
           <tr>
             <th>Ảnh bill khách gửi</th>
             <td data-label="Ảnh bill khách gửi">
@@ -229,9 +279,9 @@ const AdminBookingDetail = () => {
         </tbody>
       </table>
 
-      {booking.status === 'customer_paid' && Number(booking.staff_id) === Number(currentUser?.id) && (
+      {(booking.status === 'customer_paid' || (booking.status === 'staff_confirmed' && currentUser?.role === 'admin_system')) && (
         <div className="staff-upload-section">
-          <h3>Tải bill chuyển tiền cho khách (Tối đa 3 ảnh)</h3>
+          <h3>{booking.status === 'staff_confirmed' ? 'Cập nhật lại bill chuyển tiền (Admin)' : 'Tải bill chuyển tiền cho khách (Tối đa 3 ảnh)'}</h3>
           
           <div className="staff-upload-grid">
             {staffProofPreviews.map((preview, idx) => (
@@ -296,6 +346,37 @@ const AdminBookingDetail = () => {
               ×
             </button>
             <img src={previewImageUrl} alt="Bill preview" className="image-preview-img" />
+          </div>
+        </div>
+      )}
+
+      {confirmValidityModal.isOpen && (
+        <div className="confirm-modal-overlay">
+          <div className="confirm-modal-content">
+            <h3>Xác nhận trạng thái</h3>
+            <p>
+              Bạn có chắc chắn muốn xác nhận đơn hàng này là{' '}
+              <strong>{confirmValidityModal.value === 'yes' ? 'CÓ' : 'KHÔNG'}</strong>?
+            </p>
+            <p className="confirm-warning">
+              ⚠️ Lưu ý: Sau khi xác nhận, bạn sẽ không thể thay đổi trạng thái này.
+            </p>
+            <div className="confirm-modal-actions">
+              <button 
+                className="cancel-btn" 
+                onClick={() => setConfirmValidityModal({ isOpen: false, value: null })}
+                disabled={updating}
+              >
+                Hủy
+              </button>
+              <button 
+                className={`confirm-btn-final ${confirmValidityModal.value}`} 
+                onClick={confirmUpdateValidity}
+                disabled={updating}
+              >
+                {updating ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -72,7 +72,7 @@ const MyBookings = () => {
  
   const statusLabel = (status) => {
     if (status === 'created') return <span className="status-text created">Mới tạo</span>;
-    if (status === 'customer_paid') return <span className="status-text paid">Khách đã thanh toán</span>;
+    if (status === 'customer_paid') return <span className="status-text paid">Đang xử lý</span>;
     if (status === 'staff_confirmed' || status === 'completed') return <span className="status-text completed">Hoàn thành</span>;
     if (status === 'rejected') return <span className="status-text rejected">Đã từ chối</span>;
     if (status === 'cancelled') return <span className="status-text cancelled">Đã hủy</span>;
@@ -161,7 +161,7 @@ const MyBookings = () => {
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="created">Tạo đơn</option>
-              <option value="customer_paid">Đã thanh toán</option>
+              <option value="customer_paid">Đang xử lý</option>
               <option value="staff_confirmed">Đã hoàn thành</option>
               <option value="rejected">Từ chối</option>
               <option value="cancelled">Đã hủy</option>

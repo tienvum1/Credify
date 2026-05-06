@@ -1,5 +1,6 @@
 const pool = require("../config/db").pool;
 const { sendEmail } = require("./sendEmail");
+const { sendToUser, sendToStaff } = require("./socket");
 
 /**
  * Gửi email thông báo đơn hàng
@@ -75,30 +76,32 @@ const sendBookingEmail = async (email, subject, booking, type, extraInfo = '') =
 const createNotification = async (user_id, title, message, type = 'general', booking_id = null) => {
   try {
     // Lưu vào database
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO notifications (user_id, title, message, type, booking_id) VALUES (?, ?, ?, ?, ?)`,
       [user_id, title, message, type, booking_id]
     );
 
-    // Gửi email dựa trên loại thông báo
-    if (booking_id) {
-      const [userRows] = await pool.query("SELECT email FROM users WHERE id = ?", [user_id]);
-      const [bookingRows] = await pool.query("SELECT * FROM bookings WHERE id = ?", [booking_id]);
-      
-      if (userRows.length > 0 && bookingRows.length > 0) {
-        const user = userRows[0];
-        const booking = bookingRows[0];
-        
-        if (type === 'customer_paid') {
-          await sendBookingEmail(user.email, 'Khách đã xác nhận thanh toán', booking, 'paid');
-        } else if (type === 'staff_confirmed') {
-          await sendBookingEmail(user.email, 'Đơn hàng đã được hoàn thành', booking, 'confirmed');
-        } else if (type === 'rejected') {
-          // Lấy reject_note từ booking
-          await sendBookingEmail(user.email, 'Đơn hàng bị từ chối', booking, 'rejected', booking.reject_note || 'Thông tin không hợp lệ');
-        }
-      }
+    // Phát tín hiệu realtime qua Socket.io
+    const notificationData = {
+      id: result.insertId,
+      user_id,
+      title,
+      message,
+      type,
+      booking_id,
+      is_read: 0,
+      created_at: new Date()
+    };
+
+    // Gửi cho user cụ thể
+    sendToUser(user_id, "new_notification", notificationData);
+
+    // Nếu là thông báo liên quan đến đơn hàng mới hoặc khách thanh toán, gửi cho Staff
+    if (type === 'customer_paid' || type === 'general') {
+      sendToStaff("new_booking_notification", notificationData);
     }
+
+    // Đã loại bỏ gửi email cho các hoạt động đơn hàng theo yêu cầu (chỉ gửi thông báo trên web)
   } catch (err) {
     console.error("Lỗi khi tạo thông báo và gửi mail:", err);
   }

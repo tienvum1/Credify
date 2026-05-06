@@ -17,8 +17,12 @@ const adminRoutes = require('./routes/adminRoutes');
 const bankAccountRoutes = require('./routes/bankAccountRoutes');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const { initSocket } = require('./utils/socket');
 
 const app = express();
+const server = http.createServer(app);
+const io = initSocket(server);
 const PORT = process.env.PORT || 5001;
 
 // Bảo mật Header với Helmet
@@ -137,6 +141,6 @@ app.get('/api/hello', (req, res) => {
   res.json({ message: 'Chào mừng bạn đến với Express Backend!' });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });

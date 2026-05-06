@@ -90,7 +90,7 @@ const AdminBookingManager = () => {
 
   const statusLabel = (status) => {
     if (status === 'created') return 'Mới tạo';
-    if (status === 'customer_paid') return 'Khách đã thanh toán';
+    if (status === 'customer_paid') return 'Đang xử lý';
     if (status === 'staff_confirmed' || status === 'completed') return 'Hoàn thành';
     if (status === 'rejected') return 'Đã từ chối';
     if (status === 'cancelled') return 'Đã hủy';
@@ -291,7 +291,7 @@ const AdminBookingManager = () => {
             }}
           >
             <option value="all">Tất cả trạng thái</option>
-            <option value="customer_paid">Khách đã thanh toán</option>
+            <option value="customer_paid">Đang xử lý</option>
             <option value="staff_confirmed">Hoàn thành</option>
             <option value="created">Mới tạo</option>
             <option value="rejected">Đã từ chối</option>

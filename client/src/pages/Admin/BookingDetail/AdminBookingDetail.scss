@@ -398,3 +398,201 @@
 .mono {
   font-family: monospace;
 }
+
+// Validity Actions Styles (Same as Staff)
+.validity-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .valid-btn {
+    padding: 6px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    transition: all 0.2s;
+
+    @media (max-width: 768px) {
+      width: 100%;
+      max-width: 200px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    &:hover:not(:disabled) {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    &.yes.active {
+      background: #f0fdf4;
+      color: #16a34a;
+      border-color: #16a34a;
+    }
+
+    &.no.active {
+      background: #fef2f2;
+      color: #dc2626;
+      border-color: #dc2626;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+  }
+
+  .validity-hint {
+    font-size: 12px;
+    color: #94a3b8;
+    font-style: italic;
+
+    @media (max-width: 768px) {
+      margin-left: 0 !important;
+      margin-top: 4px;
+    }
+
+    &.confirmed {
+      color: #059669;
+      font-weight: 700;
+      font-style: normal;
+      background: #f0fdf4;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #dcfce7;
+    }
+  }
+}
+
+// Modal xác nhận is_valid (Same as Staff)
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2100; // Above image preview
+  padding: 20px;
+}
+
+.confirm-modal-content {
+  background: #ffffff;
+  border-radius: 24px;
+  width: 320px;
+  max-width: 90vw;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  box-sizing: border-box;
+
+  h3 {
+    margin: 0 0 16px;
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+    text-align: center;
+  }
+
+  p {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: #64748b;
+    line-height: 1.6;
+    text-align: center;
+
+    strong {
+      color: #0f172a;
+      font-weight: 800;
+    }
+  }
+
+  .confirm-warning {
+    background: #fffbeb;
+    color: #92400e;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    border: 1px solid #fef3c7;
+    text-align: left;
+    margin: 16px 0;
+    line-height: 1.4;
+  }
+
+  .confirm-modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .cancel-btn {
+      background: #f1f5f9;
+      color: #475569;
+
+      &:hover:not(:disabled) {
+        background: #e2e8f0;
+      }
+    }
+
+    .confirm-btn-final {
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+      &.yes {
+        background: #16a34a;
+        &:hover:not(:disabled) { 
+          background: #15803d;
+          transform: translateY(-1px);
+        }
+      }
+
+      &.no {
+        background: #dc2626;
+        &:hover:not(:disabled) { 
+          background: #b91c1c;
+          transform: translateY(-1px);
+        }
+      }
+    }
+  }
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

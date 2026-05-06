@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { getSocket } from '../../utils/socket';
 import './NotificationDropdown.scss';
 
 const NotificationDropdown = ({ user }) => {
@@ -29,16 +30,39 @@ const NotificationDropdown = ({ user }) => {
 
   useEffect(() => {
     if (!user) return;
-    const timer = setTimeout(() => {
-      fetchNotifications();
-    }, 0);
     
+    // Fetch ban đầu
+    fetchNotifications();
+
+    // Lắng nghe realtime qua Socket
+    const socket = getSocket();
+    if (socket) {
+      // Thông báo cho user bình thường
+      socket.on("new_notification", (newNotif) => {
+        setNotifications(prev => [newNotif, ...prev].slice(0, 20));
+        setUnreadCount(prev => prev + 1);
+        // Có thể thêm tiếng chuông ở đây nếu muốn
+      });
+
+      // Thông báo cho Staff (đơn mới, khách thanh toán)
+      if (user.role === 'staff' || user.role === 'admin_system') {
+        socket.on("new_booking_notification", (newNotif) => {
+          setNotifications(prev => [newNotif, ...prev].slice(0, 20));
+          setUnreadCount(prev => prev + 1);
+        });
+      }
+    }
+    
+    // Interval dự phòng (giảm tần suất xuống 1 phút vì đã có socket)
     const interval = setInterval(() => {
       fetchNotifications();
-    }, 30000);
+    }, 60000);
     
     return () => {
-      clearTimeout(timer);
+      if (socket) {
+        socket.off("new_notification");
+        socket.off("new_booking_notification");
+      }
       clearInterval(interval);
     };
   }, [user]);

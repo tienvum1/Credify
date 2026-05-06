@@ -20,7 +20,7 @@ const roundMoney = (value) => {
 
 const statusLabel = (status) => {
   if (status === "created") return "Tạo đơn";
-  if (status === "customer_paid") return "Khách đã thanh toán";
+  if (status === "customer_paid") return "Đang xử lý";
   if (status === "staff_confirmed") return "Hoàn thành";
   if (status === "completed") return "Hoàn thành";
   if (status === "rejected") return "Từ chối";

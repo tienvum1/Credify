@@ -33,7 +33,7 @@ const MyBookingDetail = () => {
   const statusLabel = (status) => {
     const labels = {
       created: 'Mới tạo',
-      customer_paid: 'Khách đã thanh toán',
+      customer_paid: 'Đang xử lý',
       staff_confirmed: 'Hoàn thành',
       completed: 'Hoàn thành',
       rejected: 'Đã từ chối',
