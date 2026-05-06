@@ -235,7 +235,7 @@ const googleLogin = async (req, res) => {
     if (users.length === 0) {
       const [result] = await pool.query(
         'INSERT INTO users (email, full_name, password, role, level, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
-        [email, name, null, 'user', 3, 1] // Mặc định role là 'user' và level 3 khi đăng ký qua Google
+        [email, name, null, 'user', 0, 1] // Mặc định role là 'user' và level 0 khi đăng ký qua Google
       );
       user = { id: result.insertId, email, full_name: name, role: 'user' };
     } else {
