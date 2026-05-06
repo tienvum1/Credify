@@ -537,6 +537,54 @@ const claimBooking = async (req, res) => {
   }
 };
 
+const updateBookingValidity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_valid } = req.body;
+    const staff_id = req.user.id;
+
+    if (!['yes', 'no'].includes(is_valid)) {
+      return res.status(400).json({ message: "Giá trị không hợp lệ. Phải là 'yes' hoặc 'no'" });
+    }
+
+    // Kiểm tra đơn hàng tồn tại và quyền sở hữu
+    const [existingRows] = await pool.query(
+      "SELECT id, staff_id FROM bookings WHERE id = ? LIMIT 1",
+      [id]
+    );
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    const booking = existingRows[0];
+
+    // Kiểm tra xem đơn đã có người nhận chưa
+    if (!booking.staff_id) {
+      return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
+    }
+
+    // Chỉ người đang xử lý đơn mới có quyền xác nhận
+    if (Number(booking.staff_id) !== Number(staff_id)) {
+      return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
+    }
+
+    await pool.query(
+      "UPDATE bookings SET is_valid = ? WHERE id = ?",
+      [is_valid, id]
+    );
+
+    res.json({ 
+      status: 'success', 
+      message: `Đã xác nhận trạng thái: ${is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}`,
+      is_valid 
+    });
+  } catch (err) {
+    console.error("Lỗi cập nhật is_valid:", err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 const staffGetBookings = async (req, res) => {
   try {
     const { status, processing_status, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
@@ -838,6 +886,7 @@ module.exports = {
   staffGetBookings,
   getStaffStats,
   claimBooking,
+  updateBookingValidity,
   staffGetBookingDetail,
   staffConfirmBooking,
   staffRejectBooking,

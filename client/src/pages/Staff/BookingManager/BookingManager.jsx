@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Clock, CheckCircle2,
-  XCircle, UserPlus, Users, Search
+  XCircle, UserPlus, Users, Search,
+  Check, X
 } from 'lucide-react';
 import api from '../../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -111,7 +112,7 @@ const BookingManager = () => {
 
   const statusLabel = (status) => {
     if (status === 'created') return 'Mới tạo';
-    if (status === 'customer_paid') return 'Khách đã thanh toán';
+    if (status === 'customer_paid') return 'Đang xử lý';
     if (status === 'staff_confirmed' || status === 'completed') return 'Hoàn thành';
     if (status === 'rejected') return 'Đã từ chối';
     if (status === 'cancelled') return 'Đã hủy';
@@ -251,7 +252,7 @@ const BookingManager = () => {
             }}
           >
             <option value="all">Tất cả trạng thái</option>
-            <option value="customer_paid">Khách đã thanh toán</option>
+            <option value="customer_paid">Đang xử lý</option>
             <option value="staff_confirmed">Hoàn thành</option>
             <option value="created">Mới tạo</option>
             <option value="rejected">Đã từ chối</option>
@@ -283,19 +284,20 @@ const BookingManager = () => {
               <th>Nhân viên xử lý</th>
               <th className="th-status">Trạng thái</th>
               <th className="th-date">Thời gian</th>
-              <th>Thao tác</th>
+              <th className="th-actions">Thao tác</th>
+              <th className="th-valid">Xác nhận</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   {renderSkeleton()}
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <div className="empty-state">
                     <Search size={48} />
                     <p>Không có dữ liệu phù hợp.</p>
@@ -334,9 +336,9 @@ const BookingManager = () => {
                       <span>{formatDateTime(b.created_at)}</span>
                     </div>
                   </td>
-                  <td>
+                  <td className="td-actions">
                     <div className="row-actions">
-                      {['created', 'customer_paid'].includes(b.status) && (
+                      {[ 'customer_paid'].includes(b.status) && (
                         <button 
                           className={`claim-btn ${b.staff_id ? 'claimed' : ''}`} 
                           onClick={() => {
@@ -357,6 +359,19 @@ const BookingManager = () => {
                         <span>Chi tiết</span>
                       </button>
                     </div>
+                  </td>
+                  <td data-label="Xác nhận" className="td-valid">
+                    {b.is_valid === 'yes' ? (
+                      <div className="valid-icon yes" title="Hợp lệ">
+                        <Check size={18} />
+                      </div>
+                    ) : b.is_valid === 'no' ? (
+                      <div className="valid-icon no" title="Không hợp lệ">
+                        <X size={18} />
+                      </div>
+                    ) : (
+                      <span className="valid-none">—</span>
+                    )}
                   </td>
                 </tr>
               ))

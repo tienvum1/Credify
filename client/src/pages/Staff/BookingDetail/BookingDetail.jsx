@@ -14,6 +14,7 @@ const BookingDetail = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [staffProofs, setStaffProofs] = useState([]);
   const [staffProofPreviews, setStaffProofPreviews] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, value: null });
 
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
@@ -31,7 +32,7 @@ const BookingDetail = () => {
   const statusLabel = (status) => {
     const labels = {
       created: 'Mới tạo',
-      customer_paid: 'Khách đã thanh toán',
+      customer_paid: 'Đang xử lý',
       staff_confirmed: 'Hoàn thành',
       completed: 'Hoàn thành',
       rejected: 'Đã từ chối',
@@ -155,6 +156,25 @@ const BookingDetail = () => {
     }
   };
 
+  const handleUpdateValidity = async (isValid) => {
+    if (!booking) return;
+    setConfirmModal({ isOpen: true, value: isValid });
+  };
+
+  const confirmUpdateValidity = async () => {
+    const isValid = confirmModal.value;
+    setConfirmModal({ isOpen: false, value: null });
+    setUpdating(true);
+    try {
+      await api.patch(`/bookings/${booking.id}/validity`, { is_valid: isValid });
+      await fetchDetail();
+    } catch {
+      // Toast handled by interceptor.
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) return <div className="booking-detail-loading">Đang tải...</div>;
   if (!booking) return <div className="booking-detail-loading">Không tìm thấy đơn</div>;
 
@@ -190,6 +210,38 @@ const BookingDetail = () => {
           <tr><th>Xác nhận lúc</th><td>{formatDateTime(booking.confirmed_at)}</td></tr>
           <tr><th>Cập nhật lúc</th><td>{formatDateTime(booking.updated_at)}</td></tr>
           <tr><th>Trạng thái</th><td><div className={`status-text ${booking.status}`}>{statusLabel(booking.status)}</div></td></tr>
+          
+          {booking.staff_id && (
+            <tr>
+              <th>Xác nhận (Có/Không)</th>
+              <td>
+                <div className="validity-actions">
+                  <button 
+                    className={`valid-btn yes ${booking.is_valid === 'yes' ? 'active' : ''}`}
+                    onClick={() => handleUpdateValidity('yes')}
+                    disabled={updating || !isAssignedStaff || booking.is_valid !== null}
+                    title={!isAssignedStaff ? "Chỉ nhân viên đang xử lý mới được xác nhận" : booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                  >
+                    CÓ
+                  </button>
+                  <button 
+                    className={`valid-btn no ${booking.is_valid === 'no' ? 'active' : ''}`}
+                    onClick={() => handleUpdateValidity('no')}
+                    disabled={updating || !isAssignedStaff || booking.is_valid !== null}
+                    title={!isAssignedStaff ? "Chỉ nhân viên đang xử lý mới được xác nhận" : booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                  >
+                    KHÔNG
+                  </button>
+                  {booking.is_valid === null && <span className="validity-hint">(Chưa xác nhận)</span>}
+                  {booking.is_valid !== null && <span className="validity-hint confirmed">✓ Đã xác nhận: {booking.is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}</span>}
+                  {!isAssignedStaff && booking.is_valid === null && (
+                    <span className="validity-hint" style={{ color: '#ef4444', fontStyle: 'normal', marginLeft: '8px' }}>⚠️ Chỉ staff xử lý mới có quyền</span>
+                  )}
+                </div>
+              </td>
+            </tr>
+          )}
+
           <tr>
             <th>Ảnh bill khách gửi</th>
             <td>
@@ -307,6 +359,37 @@ const BookingDetail = () => {
               ×
             </button>
             <img src={previewImageUrl} alt="Bill preview" className="image-preview-img" />
+          </div>
+        </div>
+      )}
+
+      {confirmModal.isOpen && (
+        <div className="confirm-modal-overlay">
+          <div className="confirm-modal-content">
+            <h3>Xác nhận trạng thái</h3>
+            <p>
+              Bạn có chắc chắn muốn xác nhận đơn hàng này là{' '}
+              <strong>{confirmModal.value === 'yes' ? 'CÓ' : 'KHÔNG'}</strong>?
+            </p>
+            <p className="confirm-warning">
+              ⚠️ Lưu ý: Sau khi xác nhận, bạn sẽ không thể thay đổi trạng thái này.
+            </p>
+            <div className="confirm-modal-actions">
+              <button 
+                className="cancel-btn" 
+                onClick={() => setConfirmModal({ isOpen: false, value: null })}
+                disabled={updating}
+              >
+                Hủy
+              </button>
+              <button 
+                className={`confirm-btn-final ${confirmModal.value}`} 
+                onClick={confirmUpdateValidity}
+                disabled={updating}
+              >
+                {updating ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
           </div>
         </div>
       )}

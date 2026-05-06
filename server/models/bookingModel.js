@@ -18,6 +18,7 @@ const bookingFields = {
   customer_paid_proof_url: 'VARCHAR(255) NULL', // Ảnh bill/chứng từ
   customer_paid_note: 'TEXT NULL', // Ghi chú khi upload bill
   reject_note: 'TEXT NULL', // Lý do staff từ chối đơn
+  is_valid: "ENUM('yes', 'no') NULL", // Trạng thái Có/Không do staff xác nhận
 
   status: "ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'",
 

@@ -214,6 +214,19 @@ const initDB = async () => {
       console.error('Lỗi khi thêm cột customer_paid_proof_urls vào bảng bookings:', err.message);
     }
 
+    // Kiểm tra và thêm cột is_valid vào bảng bookings
+    try {
+      const [columns] = await connection.query('SHOW COLUMNS FROM bookings');
+      const colNames = columns.map(c => c.Field);
+      
+      if (!colNames.includes('is_valid')) {
+        await connection.query("ALTER TABLE bookings ADD COLUMN is_valid ENUM('yes', 'no') NULL AFTER reject_note");
+        console.log('Đã thêm cột is_valid vào bảng bookings');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột is_valid vào bảng bookings:', err.message);
+    }
+
     // Cập nhật bảng qrs: Xóa card_line, fee_rate_l4, và đảm bảo có fee_rate (mặc định), fee_rate_l1, l2, l3
     try {
       const [qrCols] = await connection.query("SHOW COLUMNS FROM qrs");
