@@ -133,3 +133,30 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ success: false, message: 'Lỗi khi xóa người dùng' });
   }
 };
+
+// Xóa đơn hàng (Admin duy nhất có quyền)
+exports.deleteBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra đơn hàng tồn tại
+    const [booking] = await pool.query('SELECT id, code FROM bookings WHERE id = ?', [id]);
+    if (booking.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    // Xóa các thông báo liên quan trước (để tránh lỗi khóa ngoại nếu có)
+    await pool.query('DELETE FROM notifications WHERE booking_id = ?', [id]);
+    
+    // Xóa đơn hàng
+    await pool.query('DELETE FROM bookings WHERE id = ?', [id]);
+
+    res.json({ 
+      success: true, 
+      message: `Đã xóa đơn hàng #${booking[0].code.slice(-6)} thành công` 
+    });
+  } catch (error) {
+    console.error('Delete Booking Error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi xóa đơn hàng' });
+  }
+};

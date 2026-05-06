@@ -14,4 +14,7 @@ router.put('/users/:id', adminController.updateUser);
 router.patch('/users/:id/status', adminController.toggleUserStatus);
 router.delete('/users/:id', adminController.deleteUser);
 
+// Quản lý đơn hàng nâng cao cho Admin
+router.delete('/bookings/:id', adminController.deleteBooking);
+
 module.exports = router;

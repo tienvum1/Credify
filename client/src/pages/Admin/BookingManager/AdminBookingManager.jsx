@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Clock, CheckCircle2,
-  XCircle, UserPlus,  Search
+  XCircle, UserPlus,  Search, Trash2,
+  Check, X
 } from 'lucide-react';
 import api from '../../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -21,11 +22,19 @@ const AdminBookingManager = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [validFilter, setValidFilter] = useState('all');
+  const [processingFilter, setProcessingFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    bookingId: null,
+    shortCode: ''
+  });
+
+  const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     bookingId: null,
     shortCode: ''
@@ -131,7 +140,25 @@ const AdminBookingManager = () => {
         }
       }
 
-      return matchesSearch && matchesDate;
+      let matchesValid = true;
+      if (validFilter !== 'all') {
+        if (validFilter === 'yes') matchesValid = b.is_valid === 'yes';
+        else if (validFilter === 'no') matchesValid = b.is_valid === 'no';
+        else if (validFilter === 'null') matchesValid = b.is_valid === null;
+      }
+
+      let matchesProcessing = true;
+      if (processingFilter !== 'all') {
+        if (processingFilter === 'unclaimed') {
+          matchesProcessing = !b.staff_id;
+        } else if (processingFilter === 'processing') {
+          matchesProcessing = b.staff_id && b.status === 'customer_paid';
+        } else if (processingFilter === 'processed') {
+          matchesProcessing = b.staff_id && ['staff_confirmed', 'completed', 'rejected'].includes(b.status);
+        }
+      }
+
+      return matchesSearch && matchesDate && matchesValid && matchesProcessing;
     })
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -153,6 +180,20 @@ const AdminBookingManager = () => {
       navigate(`/admin/bookings/${id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi khi nhận đơn');
+    }
+  };
+
+  const handleDeleteBooking = async () => {
+    const id = deleteModal.bookingId;
+    try {
+      await api.delete(`/admin/bookings/${id}`);
+      toast.success('Đã xóa đơn hàng thành công');
+      setDeleteModal({ isOpen: false, bookingId: null, shortCode: '' });
+      // Refresh data
+      fetchStats();
+      fetchBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi xóa đơn hàng');
     }
   };
 
@@ -299,6 +340,32 @@ const AdminBookingManager = () => {
           </select>
 
           <select
+            value={processingFilter}
+            onChange={(e) => {
+              setProcessingFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Tất cả xử lý</option>
+            <option value="unclaimed">Chưa có ai nhận</option>
+            <option value="processing">Đang xử lý (Đã nhận)</option>
+            <option value="processed">Đã xử lý xong</option>
+          </select>
+
+          <select
+            value={validFilter}
+            onChange={(e) => {
+              setValidFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Tất cả xác nhận</option>
+            <option value="yes">Hợp lệ (CÓ)</option>
+            <option value="no">Không hợp lệ (KHÔNG)</option>
+            <option value="null">Chưa xác nhận</option>
+          </select>
+
+          <select
             value={dateFilter}
             onChange={(e) => {
               setDateFilter(e.target.value);
@@ -323,13 +390,14 @@ const AdminBookingManager = () => {
               <th>Nhân viên xử lý</th>
               <th className="th-status">Trạng thái</th>
               <th className="th-date">Thời gian</th>
-              <th>Thao tác</th>
+              <th className="th-actions">Thao tác</th>
+              <th className="th-valid">Xác nhận</th>
             </tr>
           </thead>
           <tbody>
             {currentItems.length === 0 ? (
               <tr>
-                <td colSpan={8} className="empty">Không có dữ liệu đơn hàng.</td>
+                <td colSpan={9} className="empty">Không có dữ liệu đơn hàng.</td>
               </tr>
             ) : (
               currentItems.map((b) => (
@@ -363,30 +431,51 @@ const AdminBookingManager = () => {
                       <span>{formatDateTime(b.created_at)}</span>
                     </div>
                   </td>
-                  <td>
+                  <td className="td-actions">
                     <div className="row-actions">
-                      {['created', 'customer_paid'].includes(b.status) && (
+                      {['created', 'customer_paid'].includes(b.status) && !b.staff_id && (
                         <button 
-                          className={`claim-btn ${b.staff_id ? 'claimed' : ''}`} 
+                          className="claim-btn" 
                           onClick={() => {
-                            if (!b.staff_id) {
-                              setConfirmModal({
-                                isOpen: true,
-                                bookingId: b.id,
-                                shortCode: shortCode(b.code)
-                              });
-                            }
+                            setConfirmModal({
+                              isOpen: true,
+                              bookingId: b.id,
+                              shortCode: shortCode(b.code)
+                            });
                           }}
-                          disabled={!!b.staff_id}
                         >
-                          {b.staff_id ? 'Đang xử lý' : 'Xử lý'}
+                          Xử lý
                         </button>
                       )}
                       <button className="detail-view-btn" onClick={() => navigate(`/admin/bookings/${b.id}`)}>
       
                         <span>Chi tiết</span>
                       </button>
+                      <button 
+                        className="delete-booking-btn" 
+                        onClick={() => setDeleteModal({
+                          isOpen: true,
+                          bookingId: b.id,
+                          shortCode: shortCode(b.code)
+                        })}
+                        title="Xóa đơn hàng"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
+                  </td>
+                  <td data-label="Xác nhận" className="td-valid">
+                    {b.is_valid === 'yes' ? (
+                      <div className="valid-icon yes" title="Hợp lệ">
+                        <Check size={18} />
+                      </div>
+                    ) : b.is_valid === 'no' ? (
+                      <div className="valid-icon no" title="Không hợp lệ">
+                        <X size={18} />
+                      </div>
+                    ) : (
+                      <span className="valid-none">—</span>
+                    )}
                   </td>
                 </tr>
               ))
@@ -414,6 +503,36 @@ const AdminBookingManager = () => {
                 onClick={() => handleClaim(confirmModal.bookingId)}
               >
                 Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="confirm-modal-content delete-modal">
+            <div className="modal-icon-warning">
+              <Trash2 size={48} color="#ef4444" />
+            </div>
+            <h3>Xác nhận xóa đơn hàng</h3>
+            <p>
+              Bạn có chắc chắn muốn xóa đơn hàng <strong>#{deleteModal.shortCode}</strong>? 
+              <br />
+              <span className="danger-text">Hành động này không thể hoàn tác và sẽ xóa toàn bộ dữ liệu liên quan.</span>
+            </p>
+            <div className="confirm-actions">
+              <button 
+                className="cancel-btn" 
+                onClick={() => setDeleteModal({ isOpen: false, bookingId: null, shortCode: '' })}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                className="confirm-btn delete-btn" 
+                onClick={handleDeleteBooking}
+              >
+                Xóa đơn ngay
               </button>
             </div>
           </div>

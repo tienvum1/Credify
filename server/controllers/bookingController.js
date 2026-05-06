@@ -587,7 +587,7 @@ const updateBookingValidity = async (req, res) => {
 
 const staffGetBookings = async (req, res) => {
   try {
-    const { status, processing_status, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
+    const { status, processing_status, is_valid, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
     const offset = (page - 1) * limit;
     const params = [];
     let whereSql = "WHERE 1=1";
@@ -599,6 +599,17 @@ const staffGetBookings = async (req, res) => {
       } else {
         whereSql += " AND b.status = ?";
         params.push(status);
+      }
+    }
+
+    // Filter theo trạng thái xác nhận (CÓ/KHÔNG)
+    if (is_valid && is_valid !== "all") {
+      if (is_valid === "yes") {
+        whereSql += " AND b.is_valid = 'yes'";
+      } else if (is_valid === "no") {
+        whereSql += " AND b.is_valid = 'no'";
+      } else if (is_valid === "null") {
+        whereSql += " AND b.is_valid IS NULL";
       }
     }
 
@@ -687,10 +698,12 @@ const staffGetBookingDetail = async (req, res) => {
           q.qr_image,
           u.full_name as customer_name,
           u.email as customer_email,
-          u.phone as customer_phone
+          u.phone as customer_phone,
+          s.full_name as staff_name
         FROM bookings b
         JOIN qrs q ON q.id = b.qr_id
         JOIN users u ON u.id = b.customer_id
+        LEFT JOIN users s ON s.id = b.staff_id
         WHERE b.id = ?
         LIMIT 1
       `,

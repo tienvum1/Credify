@@ -23,6 +23,7 @@ const BookingManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [processingFilter, setProcessingFilter] = useState('all');
+  const [validFilter, setValidFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -65,6 +66,7 @@ const BookingManager = () => {
           params: { 
             status: statusFilter === 'all' ? undefined : statusFilter,
             processing_status: processingFilter === 'all' ? undefined : processingFilter,
+            is_valid: validFilter === 'all' ? undefined : validFilter,
             page: currentPage,
             limit: itemsPerPage,
             search: searchTerm.trim() || undefined,
@@ -84,7 +86,7 @@ const BookingManager = () => {
     };
     loadData();
     return () => { active = false; };
-  }, [statusFilter, processingFilter, currentPage, searchTerm, dateFilter]);
+  }, [statusFilter, processingFilter, validFilter, currentPage, searchTerm, dateFilter]);
 
   const handleClaim = async (id) => {
     try {
@@ -260,6 +262,19 @@ const BookingManager = () => {
           </select>
 
           <select
+            value={validFilter}
+            onChange={(e) => {
+              setValidFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Tất cả xác nhận</option>
+            <option value="yes">Hợp lệ</option>
+            <option value="no">Không hợp lệ</option>
+            <option value="null">Chưa xác nhận</option>
+          </select>
+
+          <select
             value={dateFilter}
             onChange={(e) => {
               setDateFilter(e.target.value);
@@ -338,21 +353,18 @@ const BookingManager = () => {
                   </td>
                   <td className="td-actions">
                     <div className="row-actions">
-                      {[ 'customer_paid'].includes(b.status) && (
+                      {['created', 'customer_paid'].includes(b.status) && !b.staff_id && (
                         <button 
-                          className={`claim-btn ${b.staff_id ? 'claimed' : ''}`} 
+                          className="claim-btn" 
                           onClick={() => {
-                            if (!b.staff_id) {
-                              setConfirmModal({
-                                isOpen: true,
-                                bookingId: b.id,
-                                shortCode: shortCode(b.code)
-                              });
-                            }
+                            setConfirmModal({
+                              isOpen: true,
+                              bookingId: b.id,
+                              shortCode: shortCode(b.code)
+                            });
                           }}
-                          disabled={!!b.staff_id}
                         >
-                          {b.staff_id ? 'Đang xử lý' : 'Xử lý'}
+                          Xử lý
                         </button>
                       )}
                       <button className="detail-view-btn" onClick={() => navigate(`/staff/bookings/${b.id}`)}>

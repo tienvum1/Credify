@@ -15,6 +15,9 @@ const AdminBookingDetail = () => {
   const [staffProofs, setStaffProofs] = useState([]);
   const [staffProofPreviews, setStaffProofPreviews] = useState([]);
   const [confirmValidityModal, setConfirmValidityModal] = useState({ isOpen: false, value: null });
+  const [rejectModal, setRejectModal] = useState({ isOpen: false, note: '' });
+
+  const isAssignedStaff = booking && currentUser && Number(booking.staff_id) === Number(currentUser.id);
 
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
@@ -140,13 +143,20 @@ const AdminBookingDetail = () => {
 
   const handleReject = async () => {
     if (!booking) return;
-    const note = window.prompt('Nhập lý do từ chối đơn:');
-    if (note === null || !note.trim()) return;
+    setRejectModal({ isOpen: true, note: '' });
+  };
+
+  const confirmReject = async () => {
+    if (!rejectModal.note.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối');
+      return;
+    }
 
     setUpdating(true);
     try {
-      await api.patch(`/bookings/${booking.id}/reject`, { note: note.trim() });
+      await api.patch(`/bookings/${booking.id}/reject`, { note: rejectModal.note.trim() });
       toast.success('Đã từ chối đơn hàng');
+      setRejectModal({ isOpen: false, note: '' });
       await fetchDetail();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi khi từ chối đơn');
@@ -197,7 +207,19 @@ const AdminBookingDetail = () => {
           <tr><th>Mã đơn</th><td data-label="Mã đơn" className="mono">{shortCode(booking.code)}</td></tr>
           <tr><th>ID QR</th><td data-label="ID QR">{booking.qr_id}</td></tr>
           <tr><th>ID khách hàng</th><td data-label="ID khách hàng">{booking.customer_id}</td></tr>
-          <tr><th>ID nhân viên xử lý</th><td data-label="ID nhân viên xử lý">{booking.staff_id ?? 'Chưa có nhân viên nhận'}</td></tr>
+          <tr>
+            <th>Nhân viên xử lý</th>
+            <td data-label="Nhân viên xử lý">
+              {booking.staff_name ? (
+                <div className="staff-info-cell">
+                  <span className="staff-name-text">{booking.staff_name}</span>
+                  <span className="staff-id-tag">(ID: {booking.staff_id})</span>
+                </div>
+              ) : (
+                <span className="no-staff-text">Chưa có nhân viên nhận</span>
+              )}
+            </td>
+          </tr>
           <tr><th>Tên khách</th><td data-label="Tên khách">{booking.customer_name || '—'}</td></tr>
           <tr><th>Email khách</th><td data-label="Email khách">{booking.customer_email || '—'}</td></tr>
           <tr><th>Số điện thoại</th><td data-label="Số điện thoại">{booking.customer_phone || 'Chưa cập nhật'}</td></tr>
@@ -223,21 +245,22 @@ const AdminBookingDetail = () => {
                   <button 
                     className={`valid-btn yes ${booking.is_valid === 'yes' ? 'active' : ''}`}
                     onClick={() => handleUpdateValidity('yes')}
-                    disabled={updating || booking.is_valid !== null}
-                    title={booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                    disabled={updating || booking.is_valid !== null || !isAssignedStaff}
+                    title={!isAssignedStaff ? "Chỉ nhân viên đang xử lý mới được xác nhận" : booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
                   >
                     CÓ
                   </button>
                   <button 
                     className={`valid-btn no ${booking.is_valid === 'no' ? 'active' : ''}`}
                     onClick={() => handleUpdateValidity('no')}
-                    disabled={updating || booking.is_valid !== null}
-                    title={booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                    disabled={updating || booking.is_valid !== null || !isAssignedStaff}
+                    title={!isAssignedStaff ? "Chỉ nhân viên đang xử lý mới được xác nhận" : booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
                   >
                     KHÔNG
                   </button>
-                  {booking.is_valid === null && <span className="validity-hint">(Chưa xác nhận)</span>}
+                  {booking.is_valid === null && isAssignedStaff && <span className="validity-hint">(Chưa xác nhận)</span>}
                   {booking.is_valid !== null && <span className="validity-hint confirmed">✓ Đã xác nhận: {booking.is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}</span>}
+              
                 </div>
               </td>
             </tr>
@@ -279,10 +302,16 @@ const AdminBookingDetail = () => {
         </tbody>
       </table>
 
-      {(booking.status === 'customer_paid' || (booking.status === 'staff_confirmed' && currentUser?.role === 'admin_system')) && (
+      {booking.status === 'customer_paid' && (
         <div className="staff-upload-section">
-          <h3>{booking.status === 'staff_confirmed' ? 'Cập nhật lại bill chuyển tiền (Admin)' : 'Tải bill chuyển tiền cho khách (Tối đa 3 ảnh)'}</h3>
+          <h3>Tải bill chuyển tiền cho khách (Tối đa 3 ảnh)</h3>
           
+          {!isAssignedStaff && (
+            <p style={{ color: '#ef4444', fontWeight: '700', marginBottom: '16px' }}>
+              ⚠️ Bạn không phải là người đang xử lý đơn hàng này. Chỉ người nhận đơn mới có quyền xác nhận/từ chối.
+            </p>
+          )}
+
           <div className="staff-upload-grid">
             {staffProofPreviews.map((preview, idx) => (
               <div key={idx} className="staff-proof-preview-container">
@@ -292,13 +321,14 @@ const AdminBookingDetail = () => {
                   className="remove-staff-proof-btn" 
                   onClick={() => removeStaffProof(idx)}
                   title="Xóa ảnh"
+                  disabled={!isAssignedStaff}
                 >
                   ×
                 </button>
               </div>
             ))}
             
-            {staffProofPreviews.length < 3 && (
+            {(staffProofPreviews.length < 3 && isAssignedStaff) && (
               <label className="staff-file-upload-box">
                 <input 
                   type="file" 
@@ -319,14 +349,14 @@ const AdminBookingDetail = () => {
             <button 
               className="confirm-btn" 
               onClick={handleConfirm}
-              disabled={updating || staffProofs.length === 0}
+              disabled={updating || staffProofs.length === 0 || !isAssignedStaff}
             >
               {updating ? 'Đang xử lý...' : 'Xác nhận hoàn thành & Gửi bill'}
             </button>
             <button 
               className="reject-btn" 
               onClick={handleReject}
-              disabled={updating}
+              disabled={updating || !isAssignedStaff}
             >
               Từ chối đơn
             </button>
@@ -375,6 +405,38 @@ const AdminBookingDetail = () => {
                 disabled={updating}
               >
                 {updating ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectModal.isOpen && (
+        <div className="confirm-modal-overlay">
+          <div className="confirm-modal-content reject-modal">
+            <h3>Từ chối đơn hàng</h3>
+            <p>Vui lòng nhập lý do từ chối đơn hàng này:</p>
+            <textarea
+              className="reject-textarea"
+              placeholder="Nhập lý do tại đây..."
+              value={rejectModal.note}
+              onChange={(e) => setRejectModal({ ...rejectModal, note: e.target.value })}
+              autoFocus
+            />
+            <div className="confirm-modal-actions">
+              <button 
+                className="cancel-btn" 
+                onClick={() => setRejectModal({ isOpen: false, note: '' })}
+                disabled={updating}
+              >
+                Hủy
+              </button>
+              <button 
+                className="confirm-btn-final no" 
+                onClick={confirmReject}
+                disabled={updating || !rejectModal.note.trim()}
+              >
+                {updating ? 'Đang lưu...' : 'Xác nhận từ chối'}
               </button>
             </div>
           </div>
