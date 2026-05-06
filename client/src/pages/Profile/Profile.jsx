@@ -51,10 +51,10 @@ const Profile = () => {
           full_name: res.data.user.full_name || '',
           phone: res.data.user.phone || ''
         });
-        setLoading(false);
       } catch (err) {
         console.error('Lỗi khi lấy thông tin profile:', err);
         toast.error('Không thể tải thông tin cá nhân');
+      } finally {
         setLoading(false);
       }
     };
@@ -115,6 +115,7 @@ const Profile = () => {
       toast.success('Xóa tài khoản thành công');
       fetchBankAccounts();
     } catch (err) {
+      void err;
       toast.error('Lỗi khi xóa tài khoản');
     }
   };
@@ -213,7 +214,7 @@ const Profile = () => {
                 </span>
                 <span className="badge-level">
                   <Star size={12} style={{marginRight: '4px'}} />
-                  Cấp {user.level || 1}
+                  {user.level === 0 ? 'Cấp mặc định' : `Cấp ${user.level || 0}`}
                 </span>
               </div>
             </div>

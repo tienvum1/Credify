@@ -42,7 +42,7 @@ const UserManager = () => {
     full_name: '',
     phone: '',
     role: 'user',
-    level: 1,
+    level: 0,
     status: 'active'
   });
 
@@ -81,7 +81,7 @@ const UserManager = () => {
         full_name: user.full_name,
         phone: user.phone || '',
         role: user.role,
-        level: user.level || 1,
+        level: user.level !== undefined ? user.level : 0,
         status: user.status
       });
     } else {
@@ -92,7 +92,7 @@ const UserManager = () => {
         full_name: '',
         phone: '',
         role: 'user',
-        level: 1,
+        level: 0,
         status: 'active'
       });
     }
@@ -172,10 +172,10 @@ const UserManager = () => {
 
   const getLevelBadgeClass = (level) => {
     switch (Number(level)) {
-      case 4: return 'level-4';
       case 3: return 'level-3';
       case 2: return 'level-2';
-      default: return 'level-1';
+      case 1: return 'level-1';
+      default: return 'level-0';
     }
   };
 
@@ -301,7 +301,7 @@ const UserManager = () => {
                         </span>
                         {user.role === 'user' && (
                           <span className={`level-badge ${getLevelBadgeClass(user.level)}`}>
-                            Cấp {user.level || 1}
+                            {user.level === 0 ? 'Mặc định' : `Cấp ${user.level}`}
                           </span>
                         )}
                       </div>
@@ -422,10 +422,10 @@ const UserManager = () => {
                     value={formData.level}
                     onChange={e => setFormData({...formData, level: Number(e.target.value)})}
                   >
-                    <option value={1}>Cấp 1 (Mặc định)</option>
+                    <option value={0}>Cấp 0 (Mặc định)</option>
+                    <option value={1}>Cấp 1</option>
                     <option value={2}>Cấp 2</option>
                     <option value={3}>Cấp 3</option>
-                    <option value={4}>Cấp 4</option>
                   </select>
                 </div>
                 <div className="form-group">

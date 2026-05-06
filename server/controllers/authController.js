@@ -237,7 +237,7 @@ const googleLogin = async (req, res) => {
         'INSERT INTO users (email, full_name, password, role, level, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
         [email, name, null, 'user', 0, 1] // Mặc định role là 'user' và level 0 khi đăng ký qua Google
       );
-      user = { id: result.insertId, email, full_name: name, role: 'user' };
+      user = { id: result.insertId, email, full_name: name, role: 'user', level: 0 };
     } else {
       user = users[0];
     }

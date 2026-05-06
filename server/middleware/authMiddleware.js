@@ -13,8 +13,8 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Lấy thông tin mới nhất từ DB để đảm bảo role luôn đúng
-    const [users] = await pool.query('SELECT id, email, role FROM users WHERE id = ?', [decoded.id]);
+    // Lấy thông tin mới nhất từ DB để đảm bảo role và level luôn đúng
+    const [users] = await pool.query('SELECT id, email, role, level FROM users WHERE id = ?', [decoded.id]);
     
     if (users.length === 0) {
       return res.status(401).json({ message: 'Người dùng không tồn tại' });

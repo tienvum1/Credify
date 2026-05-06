@@ -65,7 +65,7 @@ exports.createUser = async (req, res) => {
 
     await pool.query(
       'INSERT INTO users (email, password, full_name, phone, role, level, is_verified, status) VALUES (?, ?, ?, ?, ?, ?, 1, "active")',
-      [email, hashedPassword, full_name, phone, role || 'user', level || 3]
+      [email, hashedPassword, full_name, phone, role || 'user', level !== undefined ? level : 0]
     );
 
     res.json({ success: true, message: 'Tạo người dùng thành công' });
@@ -82,7 +82,7 @@ exports.updateUser = async (req, res) => {
     const { full_name, phone, role, level, status, password } = req.body;
 
     let query = 'UPDATE users SET full_name = ?, phone = ?, role = ?, level = ?, status = ?';
-    const params = [full_name, phone, role, level || 3, status];
+    const params = [full_name, phone, role, level !== undefined ? level : 0, status];
 
     if (password && password.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
