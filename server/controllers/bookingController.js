@@ -84,6 +84,17 @@ const createBooking = async (req, res) => {
     if (qr.status !== "ready")
       return res.status(400).json({ message: "QR đang bảo trì" });
 
+    // Lấy thông tin ngân hàng Admin mặc định (tài khoản đầu tiên của admin_system)
+    const [adminBanks] = await pool.query(
+      "SELECT account_holder, bank_name, account_number FROM bank_accounts ba JOIN users u ON u.id = ba.user_id WHERE u.role = 'admin_system' AND ba.is_default = 1 LIMIT 1"
+    );
+    
+    let adminBankInfo = {
+      name: adminBanks[0]?.bank_name || "Hệ thống",
+      number: adminBanks[0]?.account_number || "0000000000",
+      holder: adminBanks[0]?.account_holder || "ADMIN"
+    };
+
     const maxAmount = toNumber(qr.max_amount_per_trans);
     if (Number.isFinite(maxAmount) && transferAmountNumber > maxAmount) {
       return res
@@ -107,9 +118,11 @@ const createBooking = async (req, res) => {
     const [result] = await pool.query(
       `
         INSERT INTO bookings (
-          code, qr_id, customer_id, staff_id, customer_bank_name, customer_account_number, customer_account_holder,
+          code, qr_id, customer_id, staff_id, 
+          customer_bank_name, customer_account_number, customer_account_holder,
+          admin_bank_name, admin_account_number, admin_account_holder,
           transfer_amount, fee_rate, fee_amount, net_amount, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
       `,
       [
         code,
@@ -119,6 +132,9 @@ const createBooking = async (req, res) => {
         String(customer_bank_name).trim(),
         String(customer_account_number).trim(),
         String(customer_account_holder).trim(),
+        adminBankInfo.name,
+        adminBankInfo.number,
+        adminBankInfo.holder,
         transferAmountNumber,
         feeRate,
         fee_amount,
@@ -891,6 +907,163 @@ const staffRejectBooking = async (req, res) => {
   }
 };
 
+// Kế toán lấy tất cả các đơn hàng cần xử lý (đơn đã được staff xác nhận và is_valid = 'yes')
+const accountantGetBookings = async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 10, dateRange = 'all' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Lọc theo is_valid = 'yes'
+    let whereSql = "WHERE b.is_valid = 'yes' AND b.status IN ('staff_confirmed', 'customer_paid', 'accountant_paid')";
+    const params = [];
+
+    if (status) {
+      whereSql += " AND b.status = ?";
+      params.push(status);
+    }
+
+    if (search) {
+      whereSql += " AND (b.code LIKE ? OR b.admin_account_holder LIKE ? OR u.full_name LIKE ?)";
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    if (dateRange !== 'all') {
+      if (dateRange === 'today') {
+        whereSql += " AND DATE(CONVERT_TZ(b.created_at, '+00:00', '+07:00')) = DATE(CONVERT_TZ(NOW(), '+00:00', '+07:00'))";
+      } else if (dateRange === '7days') {
+        whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+      } else if (dateRange === '30days') {
+        whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+      }
+    }
+
+    // Đếm tổng số đơn để phân trang và lấy thống kê
+    const [statsRows] = await pool.query(
+      `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN b.status = 'staff_confirmed' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN b.status = 'accountant_paid' THEN 1 END) as completed_count,
+        SUM(CASE WHEN b.status = 'accountant_paid' THEN b.transfer_amount ELSE 0 END) as total_amount
+      FROM bookings b 
+      JOIN users u ON u.id = b.customer_id 
+      ${whereSql}
+      `,
+      params
+    );
+    const stats = statsRows[0];
+    const total = stats.total;
+
+    const [rows] = await pool.query(
+      `
+        SELECT
+          b.*,
+          u.full_name as customer_name,
+          u.email as customer_email,
+          s.full_name as staff_name
+        FROM bookings b
+        JOIN users u ON u.id = b.customer_id
+        LEFT JOIN users s ON s.id = b.staff_id
+        ${whereSql}
+        ORDER BY b.created_at DESC
+        LIMIT ? OFFSET ?
+      `,
+      [...params, parseInt(limit), offset]
+    );
+    
+    res.json({
+      total,
+      stats,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit),
+      data: rows.map(enrichBooking)
+    });
+  } catch (err) {
+    console.error("Lỗi khi accountant lấy bookings:", err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// Kế toán lấy chi tiết đơn hàng
+const accountantGetBookingDetail = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const [rows] = await pool.query(
+      `
+        SELECT
+          b.*,
+          u.full_name as customer_name,
+          u.email as customer_email,
+          s.full_name as staff_name,
+          q.main_image as qr_main_image,
+          q.qr_image as qr_image
+        FROM bookings b
+        JOIN users u ON u.id = b.customer_id
+        LEFT JOIN users s ON s.id = b.staff_id
+        JOIN qrs q ON q.id = b.qr_id
+        WHERE b.id = ? AND b.is_valid = 'yes'
+        LIMIT 1
+      `,
+      [bookingId]
+    );
+
+    if (rows.length === 0) return res.status(404).json({ message: "Không tìm thấy đơn hoặc đơn không hợp lệ" });
+    res.json(enrichBooking(rows[0]));
+  } catch (err) {
+    console.error("Lỗi khi accountant lấy detail:", err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// Kế toán xác nhận đã chuyển tiền và up bill
+const accountantConfirmPaid = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const files = req.files || [];
+    
+    if (files.length === 0) {
+      return res.status(400).json({ message: "Vui lòng tải ít nhất một ảnh bill chuyển tiền" });
+    }
+
+    const proofUrls = files.map(file => file.path);
+    const mainProofUrl = proofUrls[0];
+    const proofUrlsJson = JSON.stringify(proofUrls);
+
+    const [existing] = await pool.query("SELECT * FROM bookings WHERE id = ?", [bookingId]);
+    if (existing.length === 0) return res.status(404).json({ message: "Không tìm thấy đơn" });
+    
+    if (existing[0].status !== 'staff_confirmed') {
+      return res.status(400).json({ message: "Đơn này chưa được nhân viên xác nhận hoặc đã được thanh toán" });
+    }
+
+    await pool.query(
+      `UPDATE bookings 
+       SET status = 'accountant_paid', 
+           accountant_paid_proof_url = ?, 
+           accountant_paid_proof_urls = ?,
+           accountant_paid_at = NOW() 
+       WHERE id = ?`,
+      [mainProofUrl, proofUrlsJson, bookingId]
+    );
+
+    // Thông báo cho khách hàng (Gửi không chặn)
+    createNotification(
+      existing[0].customer_id,
+      "Tiền đã được chuyển",
+      `Đơn hàng ${existing[0].code.slice(-6)} đã được kế toán chuyển tiền thành công. Vui lòng kiểm tra tài khoản.`,
+      "accountant_paid",
+      bookingId
+    ).catch(err => console.error("Lỗi gửi thông báo accountant paid cho khách:", err));
+
+    res.json({ success: true, message: "Xác nhận chuyển tiền thành công" });
+  } catch (err) {
+    console.error("Lỗi accountant confirm:", err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 module.exports = {
   createBooking,
   submitCustomerPaid,
@@ -903,4 +1076,7 @@ module.exports = {
   staffGetBookingDetail,
   staffConfirmBooking,
   staffRejectBooking,
+  accountantGetBookings,
+  accountantGetBookingDetail,
+  accountantConfirmPaid,
 };

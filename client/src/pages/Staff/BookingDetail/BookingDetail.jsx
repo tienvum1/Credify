@@ -34,6 +34,7 @@ const BookingDetail = () => {
       created: 'Mới tạo',
       customer_paid: 'Đang xử lý',
       staff_confirmed: 'Hoàn thành',
+      accountant_paid: 'Hoàn thành',
       completed: 'Hoàn thành',
       rejected: 'Đã từ chối',
       cancelled: 'Đã hủy'
@@ -234,9 +235,7 @@ const BookingDetail = () => {
                   </button>
                   {booking.is_valid === null && <span className="validity-hint">(Chưa xác nhận)</span>}
                   {booking.is_valid !== null && <span className="validity-hint confirmed">✓ Đã xác nhận: {booking.is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}</span>}
-                  {!isAssignedStaff && booking.is_valid === null && (
-                    <span className="validity-hint" style={{ color: '#ef4444', fontStyle: 'normal', marginLeft: '8px' }}>⚠️ Chỉ staff xử lý mới có quyền</span>
-                  )}
+                 
                 </div>
               </td>
             </tr>

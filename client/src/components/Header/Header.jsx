@@ -57,8 +57,8 @@ const Header = ({ user, handleLogout }) => {
                     <span className="role-badge">{user.role}</span>
                   </div>
                   <hr />
-                     <Link to="/profile" className="dropdown-item">
-                    <User size={16} /> Hồ sơ của tôi
+                  <Link to="/profile" className="dropdown-item">
+                    <User size={16} /> Hồ sơ cá nhân
                   </Link>
                   {user?.role === 'user' && (
                     <Link to="/my-bookings" className="dropdown-item">
@@ -80,8 +80,11 @@ const Header = ({ user, handleLogout }) => {
                       </Link>
                     </>
                   )}
-      
-              
+                  {user?.role === 'accountant' && (
+                    <Link to="/accountant/bookings" className="dropdown-item">
+                      <ShoppingCart size={16} /> Quản lý đơn hàng
+                    </Link>
+                  )}
                   <Link to="/settings" className="dropdown-item">
                     <Settings size={16} /> Cài đặt
                   </Link>

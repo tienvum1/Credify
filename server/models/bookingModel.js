@@ -20,7 +20,12 @@ const bookingFields = {
   reject_note: 'TEXT NULL', // Lý do staff từ chối đơn
   is_valid: "ENUM('yes', 'no') NULL", // Trạng thái Có/Không do staff xác nhận
 
-  status: "ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'",
+  admin_bank_name: 'VARCHAR(120) NULL', // Ngân hàng admin lúc tạo đơn
+  admin_account_number: 'VARCHAR(60) NULL', // STK admin lúc tạo đơn
+  admin_account_holder: 'VARCHAR(255) NULL', // Tên admin lúc tạo đơn
+  accountant_paid_proof_url: 'VARCHAR(255) NULL', // Ảnh bill của kế toán
+  accountant_paid_at: 'TIMESTAMP NULL', // Thời gian kế toán chuyển tiền
+  status: "ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'",
 
   paid_at: 'TIMESTAMP NULL',
   confirmed_at: 'TIMESTAMP NULL',

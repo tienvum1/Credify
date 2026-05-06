@@ -15,6 +15,8 @@ import StaffCardManager from './pages/Staff/CardManager/CardManager';
 import AdminUserManager from './pages/Admin/UserManager/UserManager';
 import AdminBookingManager from './pages/Admin/BookingManager/AdminBookingManager';
 import AdminBookingDetail from './pages/Admin/BookingDetail/AdminBookingDetail';
+import AccountantBookingManager from './pages/Accountant/BookingManager/AccountantBookingManager';
+import AccountantBookingDetail from './pages/Accountant/BookingDetail/AccountantBookingDetail';
 import AdminLayout from './components/AdminLayout/AdminLayout';
 import MyBookings from './pages/MyBookings/MyBookings';
 import MyBookingDetail from './pages/MyBookings/MyBookingDetail';
@@ -93,7 +95,14 @@ function App() {
     <Router>
       <LayoutWrapper user={user} handleLogout={handleLogout}>
         <Routes>
-        <Route path="/" element={<Home />} />
+        <Route
+          path="/"
+          element={
+            user?.role === 'accountant' 
+              ? <Navigate to="/accountant/bookings" replace /> 
+              : <Home />
+          }
+        />
         <Route path="/qrs/:id" element={<QRDetail />} />
         <Route
           path="/payment/:bookingId"
@@ -171,6 +180,22 @@ function App() {
           element={
             <ProtectedRoute user={user} allowedRoles={['staff']}>
               <Notifications user={user} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/bookings"
+          element={
+            <ProtectedRoute user={user} allowedRoles={['accountant', 'admin_system']}>
+              <AccountantBookingManager />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/bookings/:id"
+          element={
+            <ProtectedRoute user={user} allowedRoles={['accountant', 'admin_system']}>
+              <AccountantBookingDetail />
             </ProtectedRoute>
           }
         />

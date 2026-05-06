@@ -115,7 +115,7 @@ const BookingManager = () => {
   const statusLabel = (status) => {
     if (status === 'created') return 'Mới tạo';
     if (status === 'customer_paid') return 'Đang xử lý';
-    if (status === 'staff_confirmed' || status === 'completed') return 'Hoàn thành';
+    if (status === 'staff_confirmed' || status === 'completed' || status === 'accountant_paid') return 'Hoàn thành';
     if (status === 'rejected') return 'Đã từ chối';
     if (status === 'cancelled') return 'Đã hủy';
     return status;

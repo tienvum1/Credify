@@ -328,13 +328,13 @@
     border-radius: 50%;
 
     &.yes {
-      background: #f0fdf4;
+      background: #ffffff;
       color: #16a34a;
       border: 1px solid #dcfce7;
     }
 
     &.no {
-      background: #fef2f2;
+      background: #ffffff;
       color: #ef4444;
       border: 1px solid #fee2e2;
     }
@@ -348,7 +348,7 @@
 
 .th-valid {
   z-index: 4;
-  background: #f1f5f9 !important; // Đậm hơn cho tiêu đề cuối
+  background: #ffffff !important; // Đậm hơn cho tiêu đề cuối
   font-weight: 800 !important;
   color: #1e293b !important;
 }
@@ -414,7 +414,8 @@
   }
 
   &.staff_confirmed,
-  &.completed {
+  &.completed,
+  &.accountant_paid {
     color: #16a34a;
   }
 
@@ -446,7 +447,8 @@
   }
 
   &.staff_confirmed,
-  &.completed {
+  &.completed,
+  &.accountant_paid {
     background: #f0fdf4;
     color: #15803d;
     border: 1px solid #dcfce7;

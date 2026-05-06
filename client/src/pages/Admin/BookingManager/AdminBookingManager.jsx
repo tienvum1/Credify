@@ -100,7 +100,7 @@ const AdminBookingManager = () => {
   const statusLabel = (status) => {
     if (status === 'created') return 'Mới tạo';
     if (status === 'customer_paid') return 'Đang xử lý';
-    if (status === 'staff_confirmed' || status === 'completed') return 'Hoàn thành';
+    if (status === 'staff_confirmed' || status === 'completed' || status === 'accountant_paid') return 'Hoàn thành';
     if (status === 'rejected') return 'Đã từ chối';
     if (status === 'cancelled') return 'Đã hủy';
     return status;
@@ -388,6 +388,7 @@ const AdminBookingManager = () => {
               <th>Khách hàng</th>
               <th className="th-money">Tiền chuyển</th>
               <th>Nhân viên xử lý</th>
+              <th>Kế toán</th>
               <th className="th-status">Trạng thái</th>
               <th className="th-date">Thời gian</th>
               <th className="th-actions">Thao tác</th>
@@ -422,6 +423,20 @@ const AdminBookingManager = () => {
                     ) : (
                       <span className="no-staff">Chưa có</span>
                     )}
+                  </td>
+                  <td data-label="Kế toán">
+{ (b.status === 'accountant_paid'  || b.status === 'staff_confirmed' || b.status === 'customer_paid' ) && b.is_valid === 'yes'? (
+  <>
+                    {b.status === 'accountant_paid' ? (
+                      <span className="acc-status paid">Đã thanh toán</span>
+                    ) : (
+                      <span className="acc-status pending">Chưa thanh toán</span>
+                    )}
+                    </>)
+                    :(
+                    <span className="no-accountant"></span>
+                    )
+                  }
                   </td>
                   <td data-label="Trạng thái" className="th-status">
                     <span className={`status-text ${b.status}`}>{statusLabel(b.status)}</span>

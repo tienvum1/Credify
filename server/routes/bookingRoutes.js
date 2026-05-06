@@ -17,6 +17,9 @@ const {
   getStaffStats,
   claimBooking,
   updateBookingValidity,
+  accountantGetBookings,
+  accountantGetBookingDetail,
+  accountantConfirmPaid,
 } = require("../controllers/bookingController");
 
 const upload = multer({ 
@@ -47,5 +50,10 @@ router.patch(
   staffConfirmBooking
 );
 router.patch("/:id/reject", protect, authorize("staff", "admin_system"), staffRejectBooking);
+
+// Routes dành cho Kế toán
+router.get("/accountant/list", protect, authorize("accountant", "admin_system"), accountantGetBookings);
+router.get("/accountant/:id", protect, authorize("accountant", "admin_system"), accountantGetBookingDetail);
+router.post("/accountant/:id/confirm", protect, authorize("accountant"), upload.array("proof", 3), accountantConfirmPaid);
 
 module.exports = router;

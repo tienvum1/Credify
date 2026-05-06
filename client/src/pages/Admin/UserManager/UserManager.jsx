@@ -238,8 +238,15 @@ const UserManager = () => {
         <div className="stat-card">
           <div className="stat-icon staff"><UserPlus size={24} /></div>
           <div className="stat-info">
-            <span className="label">Nhân viên / Kế toán</span>
-            <span className="value">{Number(stats.staff || 0) + Number(stats.accountants || 0)}</span>
+            <span className="label">Nhân viên</span>
+            <span className="value">{stats.staff}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon accountant"><UserCheck size={24} /></div>
+          <div className="stat-info">
+            <span className="label">Kế toán</span>
+            <span className="value">{stats.accountants}</span>
           </div>
         </div>
         <div className="stat-card">

@@ -272,6 +272,26 @@
     font-size: 13px;
 }
 
+.acc-status {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+
+    &.paid {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #dcfce7;
+    }
+
+    &.pending {
+        background: #fff7ed;
+        color: #d97706;
+        border: 1px solid #ffedd5;
+    }
+}
+
 .status-text {
     font-size: 12px;
     font-weight: 800;
@@ -287,7 +307,8 @@
     }
 
     &.staff_confirmed,
-    &.completed {
+    &.completed,
+    &.accountant_paid {
         color: #16a34a;
     }
 

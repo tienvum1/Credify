@@ -65,11 +65,26 @@ const initDB = async () => {
       await connection.query("ALTER TABLE users ADD COLUMN level TINYINT DEFAULT 1 AFTER role");
     }
 
-    // Kiểm tra và thêm cột phone nếu chưa tồn tại
-    const [phoneColumns] = await connection.query("SHOW COLUMNS FROM users LIKE 'phone'");
-    if (phoneColumns.length === 0) {
-      console.log('Đang thêm cột phone vào bảng users...');
-      await connection.query("ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL AFTER full_name");
+    // Kiểm tra và thêm các cột mới cho bookings (admin bank info & accountant proof)
+    const [bookingCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'admin_bank_name'");
+    if (bookingCols.length === 0) {
+      console.log('Đang nâng cấp bảng bookings...');
+      await connection.query("ALTER TABLE bookings ADD COLUMN admin_bank_name VARCHAR(120) NULL AFTER customer_account_holder");
+      await connection.query("ALTER TABLE bookings ADD COLUMN admin_account_number VARCHAR(60) NULL AFTER admin_bank_name");
+      await connection.query("ALTER TABLE bookings ADD COLUMN admin_account_holder VARCHAR(255) NULL AFTER admin_account_number");
+      await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_url VARCHAR(255) NULL AFTER customer_paid_proof_url");
+      await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_at TIMESTAMP NULL AFTER confirmed_at");
+      await connection.query("ALTER TABLE bookings MODIFY COLUMN status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
+    } else {
+      // Đảm bảo enum status luôn đúng kể cả khi đã có cột
+      await connection.query("ALTER TABLE bookings MODIFY COLUMN status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
+    }
+
+    // Thêm cột accountant_paid_proof_urls (JSON) để lưu nhiều ảnh
+    const [accProofCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'accountant_paid_proof_urls'");
+    if (accProofCols.length === 0) {
+      console.log('Đang thêm cột accountant_paid_proof_urls vào bảng bookings...');
+      await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_urls JSON NULL AFTER accountant_paid_proof_url");
     }
 
     // Kiểm tra và thêm cột main_image, qr_image vào bảng qrs nếu chưa tồn tại
@@ -125,7 +140,7 @@ const initDB = async () => {
         fee_rate DECIMAL(5, 2) NOT NULL,
         fee_amount DECIMAL(15, 2) NOT NULL,
         net_amount DECIMAL(15, 2) NOT NULL,
-        status ENUM('created', 'customer_paid', 'staff_confirmed', 'completed', 'rejected', 'cancelled') DEFAULT 'created',
+        status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') DEFAULT 'created',
         customer_paid_proof_urls TEXT,
         customer_paid_note TEXT,
         staff_paid_proof_urls TEXT,
@@ -303,10 +318,12 @@ const initDB = async () => {
       }
     } catch (err) {}
 
-    // Đồng bộ enum status của bookings (bỏ completed)
+    // Đồng bộ enum status của bookings
     try {
-      await connection.query("ALTER TABLE bookings MODIFY status ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
-    } catch (err) {}
+      await connection.query("ALTER TABLE bookings MODIFY status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
+    } catch (err) {
+      console.error('Lỗi khi đồng bộ enum status bookings:', err.message);
+    }
 
     // Bỏ cột completed_at nếu còn tồn tại
     try {

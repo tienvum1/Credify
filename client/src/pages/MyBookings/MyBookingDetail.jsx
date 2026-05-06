@@ -35,6 +35,7 @@ const MyBookingDetail = () => {
       created: 'Mới tạo',
       customer_paid: 'Đang xử lý',
       staff_confirmed: 'Hoàn thành',
+      accountant_paid: 'Hoàn thành',
       completed: 'Hoàn thành',
       rejected: 'Đã từ chối',
       cancelled: 'Đã hủy'
