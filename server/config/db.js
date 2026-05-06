@@ -214,22 +214,34 @@ const initDB = async () => {
       console.error('Lỗi khi thêm cột customer_paid_proof_urls vào bảng bookings:', err.message);
     }
 
-    // Kiểm tra và thêm các cột phí theo cấp độ vào bảng qrs
+    // Cập nhật bảng qrs: Xóa card_line, fee_rate_l4, và đảm bảo có fee_rate (mặc định), fee_rate_l1, l2, l3
     try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM qrs');
-      const colNames = columns.map(c => c.Field);
+      const [qrCols] = await connection.query("SHOW COLUMNS FROM qrs");
+      const qrColNames = qrCols.map(c => c.Field);
       
-      if (!colNames.includes('fee_rate_l1')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l1 DECIMAL(5, 2) DEFAULT 0 AFTER fee_rate");
+      if (qrColNames.includes('card_line')) {
+        await connection.query("ALTER TABLE qrs DROP COLUMN card_line");
+        console.log("Bảng qrs: Đã xóa cột card_line");
       }
-      if (!colNames.includes('fee_rate_l2')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l2 DECIMAL(5, 2) DEFAULT 0 AFTER fee_rate_l1");
+      if (qrColNames.includes('fee_rate_l4')) {
+        await connection.query("ALTER TABLE qrs DROP COLUMN fee_rate_l4");
+        console.log("Bảng qrs: Đã xóa cột fee_rate_l4");
       }
-      if (!colNames.includes('fee_rate_l3')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l3 DECIMAL(5, 2) DEFAULT 0 AFTER fee_rate_l2");
+      if (!qrColNames.includes('fee_rate')) {
+        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate DECIMAL(5,2) DEFAULT 0 AFTER id");
+        console.log("Bảng qrs: Đã thêm cột fee_rate");
+      }
+      if (!qrColNames.includes('fee_rate_l1')) {
+        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l1 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate");
+      }
+      if (!qrColNames.includes('fee_rate_l2')) {
+        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l2 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate_l1");
+      }
+      if (!qrColNames.includes('fee_rate_l3')) {
+        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l3 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate_l2");
       }
     } catch (err) {
-      console.error('Lỗi khi thêm các cột phí vào bảng qrs:', err.message);
+      console.error('Lỗi khi cập nhật bảng qrs:', err.message);
     }
     
     // Kiểm tra và thêm cột status vào bảng qrs nếu chưa có

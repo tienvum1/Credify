@@ -20,7 +20,6 @@ const StaffQRManager = () => {
   const [feeRateL2, setFeeRateL2] = useState('');
   const [feeRateL3, setFeeRateL3] = useState('');
   const [note, setNote] = useState('');
-  const [cardLines, setCardLines] = useState('');
   const [status, setStatus] = useState('ready');
 
   const refreshQRs = async () => {
@@ -55,22 +54,30 @@ const StaffQRManager = () => {
     setFeeRateL2('');
     setFeeRateL3('');
     setNote('');
-    setCardLines('');
     setStatus('ready');
     setEditingQr(null);
   };
 
   const handleEdit = (qr) => {
     setEditingQr(qr);
-    setMaxAmount(qr.max_amount_per_trans);
+    setMaxAmount(qr.max_amount_per_trans ? Math.round(qr.max_amount_per_trans).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
     setFeeRate(qr.fee_rate);
     setFeeRateL1(qr.fee_rate_l1 || '');
     setFeeRateL2(qr.fee_rate_l2 || '');
     setFeeRateL3(qr.fee_rate_l3 || '');
     setNote(qr.note || '');
-    setCardLines(Array.isArray(qr.card_lines) ? qr.card_lines.join(', ') : (qr.card_lines || ''));
     setStatus(qr.status || 'ready');
     setShowModal(true);
+  };
+
+  const handleMaxAmountChange = (e) => {
+    // Chỉ giữ lại số
+    const raw = e.target.value.replace(/\./g, '');
+    if (raw === '' || /^\d+$/.test(raw)) {
+      // Định dạng lại với dấu chấm
+      const formatted = raw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      setMaxAmount(formatted);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -78,7 +85,11 @@ const StaffQRManager = () => {
     const formData = new FormData();
     if (mainImageFile) formData.append('main_image', mainImageFile);
     if (qrImageFile) formData.append('qr_image', qrImageFile);
-    formData.append('max_amount_per_trans', maxAmount);
+    
+    // Xóa dấu chấm trước khi gửi lên server
+    const cleanMaxAmount = maxAmount.replace(/\./g, '');
+    formData.append('max_amount_per_trans', cleanMaxAmount);
+    
     formData.append('fee_rate', feeRate);
     formData.append('fee_rate_l1', feeRateL1);
     formData.append('fee_rate_l2', feeRateL2);
@@ -86,9 +97,6 @@ const StaffQRManager = () => {
     formData.append('note', note);
     formData.append('status', status);
     
-    // Gửi card_lines dưới dạng chuỗi (backend đã có logic parse)
-    formData.append('card_lines', cardLines);
-
     try {
       if (editingQr) {
         await api.put(`/qrs/${editingQr.id}`, formData);
@@ -108,7 +116,7 @@ const StaffQRManager = () => {
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
     if (Number.isNaN(n)) return '—';
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
   const formatDateTime = (value) => {
@@ -117,7 +125,7 @@ const StaffQRManager = () => {
     if (Number.isNaN(d.getTime())) return '—';
     // Cộng thêm 7 tiếng (UTC+7)
     d.setHours(d.getHours() + 7);
-    return d.toLocaleString('vi-VN');
+    return d.toLocaleDateString('vi-VN');
   };
 
   const handleToggleStatus = async (qr) => {
@@ -131,21 +139,6 @@ const StaffQRManager = () => {
     } finally {
       setUpdatingId(null);
     }
-  };
-
-  const normalizeCardLines = (raw) => {
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw.filter(Boolean);
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed.filter(Boolean);
-      } catch (e) {
-        void e;
-      }
-      return raw.split(',').map((s) => s.trim()).filter(Boolean);
-    }
-    return [];
   };
 
   const filteredQrs = qrs.filter((qr) => {
@@ -186,9 +179,11 @@ const StaffQRManager = () => {
               <th className="th-stt">ID</th>
               <th className="th-img">Ảnh đại diện</th>
               <th className="th-img">Ảnh QR</th>
-              <th className="th-money">Số tiền tối đa 1 lần chuyển</th>
-              <th className="th-fee">Phí</th>
-              <th className="th-lines">Thẻ hỗ trợ</th>
+              <th className="th-money">Hạn mức</th>
+              <th className="th-fee">Phí Def</th>
+              <th className="th-fee">Phí L1</th>
+              <th className="th-fee">Phí L2</th>
+              <th className="th-fee">Phí L3</th>
               <th className="th-date">Ngày tạo</th>
               <th className="th-date">Ngày cập nhật</th>
               <th className="th-status">Trạng thái QR</th>
@@ -234,18 +229,20 @@ const StaffQRManager = () => {
                         </button>
                       </div>
                     </td>
-                    <td data-label="Số tiền tối đa 1 lần chuyển" className="td-money">
+                    <td data-label="Hạn mức" className="td-money">
                       <span className="money-value">{formatMoney(qr.max_amount_per_trans)}</span>
                     </td>
-                    <td data-label="Phí" className="td-fee">
-                      <span className="fee-badge">{qr.fee_rate}%</span>
+                    <td data-label="Phí Def" className="td-fee">
+                      <span className="fee-badge def">{qr.fee_rate}%</span>
                     </td>
-                    <td data-label="Thẻ hỗ trợ" className="td-lines">
-                      <div className="card-lines-chips">
-                        {normalizeCardLines(qr.card_lines).map((line, idx) => (
-                          <span key={idx} className="card-line-chip">{line}</span>
-                        ))}
-                      </div>
+                    <td data-label="Phí L1" className="td-fee">
+                      <span className="fee-badge l1">{qr.fee_rate_l1}%</span>
+                    </td>
+                    <td data-label="Phí L2" className="td-fee">
+                      <span className="fee-badge l2">{qr.fee_rate_l2}%</span>
+                    </td>
+                    <td data-label="Phí L3" className="td-fee">
+                      <span className="fee-badge l3">{qr.fee_rate_l3}%</span>
                     </td>
                     <td data-label="Ngày tạo" className="td-date">{formatDateTime(qr.created_at)}</td>
                     <td data-label="Ngày cập nhật" className="td-date">{formatDateTime(qr.updated_at)}</td>
@@ -303,8 +300,14 @@ const StaffQRManager = () => {
                 <input type="file" onChange={(e) => setQrImageFile(e.target.files[0])} required={!editingQr} />
               </div>
               <div className="form-group">
-                <label>Mức tiền tối đa (VNĐ):</label>
-                <input type="number" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} required />
+                <label>Hạn mức tối đa:</label>
+                <input 
+                  type="text" 
+                  value={maxAmount} 
+                  onChange={handleMaxAmountChange} 
+                  placeholder="Ví dụ: 4.000.000"
+                  required 
+                />
               </div>
               <div className="form-group">
                 <label>Tỷ lệ phí mặc định (%):</label>
@@ -323,10 +326,6 @@ const StaffQRManager = () => {
                   <label>Phí Cấp 3 (%):</label>
                   <input type="number" step="0.01" value={feeRateL3} onChange={(e) => setFeeRateL3(e.target.value)} placeholder="Mặc định" />
                 </div>
-              </div>
-              <div className="form-group">
-                <label>Dòng thẻ hỗ trợ (cách nhau bằng dấu phẩy):</label>
-                <input type="text" value={cardLines} onChange={(e) => setCardLines(e.target.value)} placeholder="Ví dụ: Visa, Master, Napas" />
               </div>
               <div className="form-group">
                 <label>Ghi chú:</label>

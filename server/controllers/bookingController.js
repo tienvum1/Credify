@@ -91,7 +91,8 @@ const createBooking = async (req, res) => {
         .json({ message: "Số tiền vượt quá hạn mức của thẻ QR" });
     }
 
-    let feeRate = toNumber(qr.fee_rate);
+    // Xác định phí theo level của user
+    let feeRate = toNumber(qr.fee_rate); // Mặc định là fee_rate (cho level 0)
     if (user_level === 1) feeRate = toNumber(qr.fee_rate_l1);
     else if (user_level === 2) feeRate = toNumber(qr.fee_rate_l2);
     else if (user_level === 3) feeRate = toNumber(qr.fee_rate_l3);

@@ -1,16 +1,28 @@
 const pool = require('../config/db').pool;
+const { cloudinary } = require('../config/cloudinary');
+
+// Hàm helper để xóa ảnh trên Cloudinary từ URL
+const deleteCloudinaryImage = async (url) => {
+  if (!url) return;
+  try {
+    // URL Cloudinary có dạng: https://res.cloudinary.com/cloud_name/image/upload/v1234567/folder/public_id.jpg
+    const parts = url.split('/');
+    const folderAndPublicId = parts.slice(-2).join('/').split('.')[0]; // Lấy 'folder/public_id'
+    await cloudinary.uploader.destroy(folderAndPublicId);
+    console.log('Đã xóa ảnh cũ trên Cloudinary:', folderAndPublicId);
+  } catch (err) {
+    console.error('Lỗi khi xóa ảnh trên Cloudinary:', err.message);
+  }
+};
 
 // Tạo mới một QR
 const createQR = async (req, res) => {
   try {
     const { 
-      max_amount_per_trans, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
+      max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
       note, status 
     } = req.body;
     const creator_id = req.user.id;
-    
-    // fee_rate mặc định lấy từ fee_rate_l1 nếu không có
-    const fee_rate = req.body.fee_rate || fee_rate_l1 || 0;
     
     // Khi dùng upload.fields, các file nằm trong req.files
     const main_image = req.files && req.files.main_image ? req.files.main_image[0].path : '';
@@ -25,8 +37,8 @@ const createQR = async (req, res) => {
     const [result] = await pool.query(
       'INSERT INTO qrs (main_image, qr_image, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, note, status, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
-        main_image, qr_image, max_amount_per_trans, fee_rate, 
-        fee_rate_l1 || 0, fee_rate_l2 || 0, fee_rate_l3 || 0, 
+        main_image, qr_image, max_amount_per_trans, 
+        fee_rate || 0, fee_rate_l1 || 0, fee_rate_l2 || 0, fee_rate_l3 || 0, 
         note, qrStatus, creator_id
       ]
     );
@@ -54,7 +66,7 @@ const createQR = async (req, res) => {
 const updateQR = async (req, res) => {
   try {
     const { 
-      max_amount_per_trans, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
+      max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
       note, status 
     } = req.body;
     const qrId = req.params.id;
@@ -67,23 +79,31 @@ const updateQR = async (req, res) => {
     let qr_image = existing[0].qr_image;
 
     if (req.files) {
-      if (req.files.main_image) main_image = req.files.main_image[0].path;
-      if (req.files.qr_image) qr_image = req.files.qr_image[0].path;
+      if (req.files.main_image) {
+        // Xóa ảnh cũ trước khi cập nhật ảnh mới
+        await deleteCloudinaryImage(existing[0].main_image);
+        main_image = req.files.main_image[0].path;
+      }
+      if (req.files.qr_image) {
+        // Xóa ảnh cũ trước khi cập nhật ảnh mới
+        await deleteCloudinaryImage(existing[0].qr_image);
+        qr_image = req.files.qr_image[0].path;
+      }
     }
 
     const updatedMaxAmount = max_amount_per_trans ?? existing[0].max_amount_per_trans;
+    const updatedFeeDefault = fee_rate ?? existing[0].fee_rate;
     const updatedFeeL1 = fee_rate_l1 ?? existing[0].fee_rate_l1;
     const updatedFeeL2 = fee_rate_l2 ?? existing[0].fee_rate_l2;
     const updatedFeeL3 = fee_rate_l3 ?? existing[0].fee_rate_l3;
-    const updatedFeeRate = req.body.fee_rate ?? updatedFeeL1; // Tự động cập nhật fee_rate theo L1
     const updatedNote = note ?? existing[0].note;
     const qrStatus = status || existing[0].status;
 
     await pool.query(
       'UPDATE qrs SET main_image = ?, qr_image = ?, max_amount_per_trans = ?, fee_rate = ?, fee_rate_l1 = ?, fee_rate_l2 = ?, fee_rate_l3 = ?, note = ?, status = ? WHERE id = ?',
       [
-        main_image, qr_image, updatedMaxAmount, updatedFeeRate, 
-        updatedFeeL1, updatedFeeL2, updatedFeeL3,
+        main_image, qr_image, updatedMaxAmount, 
+        updatedFeeDefault, updatedFeeL1, updatedFeeL2, updatedFeeL3,
         updatedNote, qrStatus, qrId
       ]
     );
@@ -158,6 +178,15 @@ const updateQRStatus = async (req, res) => {
 const deleteQR = async (req, res) => {
   try {
     const qrId = req.params.id;
+    
+    // Lấy thông tin QR để xóa ảnh trên Cloudinary
+    const [existing] = await pool.query('SELECT main_image, qr_image FROM qrs WHERE id = ?', [qrId]);
+    if (existing.length === 0) return res.status(404).json({ message: 'Không tìm thấy QR' });
+
+    // Xóa ảnh trên Cloudinary
+    await deleteCloudinaryImage(existing[0].main_image);
+    await deleteCloudinaryImage(existing[0].qr_image);
+
     const [result] = await pool.query('DELETE FROM qrs WHERE id = ?', [qrId]);
     
     if (result.affectedRows === 0) {

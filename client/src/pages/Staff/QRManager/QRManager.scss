@@ -140,13 +140,13 @@
   .th-money,
   .td-money {
     text-align: left;
-    min-width: 160px;
+    width: 140px;
   }
 
   .th-fee,
   .td-fee {
-    text-align: right;
-    width: 100px;
+    text-align: center;
+    width: 70px;
   }
 
   .th-date,
@@ -209,31 +209,35 @@
   }
 
   .fee-badge {
-    font-weight: 800;
-    color: #64748b;
-    background: #f1f5f9;
     padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 12px;
-    white-space: nowrap;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
     display: inline-block;
+    border: 1px solid transparent;
+
+    &.def {
+      background: #f1f5f9;
+      color: #475569;
+      border-color: #e2e8f0;
+    }
 
     &.l1 {
-      color: #8b5cf6;
-      background: #f5f3ff;
-      border: 1px solid rgba(139, 92, 246, 0.1);
+      background: #f0fdf4;
+      color: #166534;
+      border-color: #bbf7d0;
     }
 
     &.l2 {
-      color: #10b981;
-      background: #ecfdf5;
-      border: 1px solid rgba(16, 185, 129, 0.1);
+      background: #eff6ff;
+      color: #1e40af;
+      border-color: #bfdbfe;
     }
 
     &.l3 {
-      color: #f59e0b;
       background: #fffbeb;
-      border: 1px solid rgba(245, 158, 11, 0.1);
+      color: #92400e;
+      border-color: #fef3c7;
     }
   }
 

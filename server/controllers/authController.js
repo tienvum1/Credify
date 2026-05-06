@@ -49,7 +49,7 @@ const testEmail = async (req, res) => {
           </div>
           <p style="color: #64748b; font-size: 14px;">Thư này được gửi từ API test-email. Nếu bạn không phải là người quản trị, vui lòng bỏ qua.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify.vn. All rights reserved.</p>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2024 Credify. All rights reserved.</p>
         </div>
       `,
       text: `Hệ thống Resend hoạt động tốt! Bạn nhận được thư này có nghĩa là Resend đã được cấu hình chính xác.`
@@ -107,7 +107,7 @@ const register = async (req, res) => {
 
     await pool.query(
       'INSERT INTO users (email, password, full_name, role, level, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [email, hashedPassword, full_name, 'user', 3, 0, verificationToken]
+      [email, hashedPassword, full_name, 'user', 0, 0, verificationToken]
     );
 
     // Gửi email xác nhận
@@ -306,8 +306,12 @@ const forgotPassword = async (req, res) => {
     console.log("Email khôi phục đã gửi thành công tới:", email);
     res.json({ message: 'Link khôi phục mật khẩu đã được gửi vào email của bạn.' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Lỗi server khi gửi mail khôi phục mật khẩu' });
+    console.error('LỖI FORGOT PASSWORD:', err);
+    res.status(500).json({ 
+      message: 'Lỗi hệ thống khi gửi mail', 
+      error: err.message,
+      detail: err.response?.body || 'Vui lòng kiểm tra log server trên Render'
+    });
   }
 };
 

@@ -4,7 +4,7 @@ const qrFields = {
   main_image: 'VARCHAR(255)', // Ảnh đại diện hiển thị ở danh sách ngoài (Card)
   qr_image: 'VARCHAR(255)', // Ảnh mã QR thực tế để khách quét
   max_amount_per_trans: 'DECIMAL(15, 2) NOT NULL', // Mức tiền tối đa một lần chuyển
-  fee_rate: 'DECIMAL(5, 2) DEFAULT 0', // Giá phí mặc định
+  fee_rate: 'DECIMAL(5, 2) DEFAULT 0', // Phí mặc định (áp dụng cho Level 0)
   fee_rate_l1: 'DECIMAL(5, 2) DEFAULT 0', // Phí cho thành viên cấp 1
   fee_rate_l2: 'DECIMAL(5, 2) DEFAULT 0', // Phí cho thành viên cấp 2
   fee_rate_l3: 'DECIMAL(5, 2) DEFAULT 0', // Phí cho thành viên cấp 3
