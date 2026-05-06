@@ -8,15 +8,16 @@ const { sendEmail } = require('../utils/sendEmail');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Cấu hình cookie options linh hoạt
+// Cấu hình cookie options tối ưu cho cả máy tính và điện thoại (Cross-site)
 const isProduction = process.env.NODE_ENV === 'production';
 const cookieOptions = {
   httpOnly: true,
-  secure: true,
-  sameSite: 'none',
-  maxAge: 7 * 24 * 60 * 60 * 1000
+  secure: true, // Bắt buộc phải có Secure khi dùng SameSite=none
+  sameSite: 'none', // Cho phép gửi cookie giữa các domain khác nhau
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
 };
 
+// Nếu đang chạy local (không có HTTPS), phải tắt Secure và đổi SameSite
 if (!isProduction) {
   cookieOptions.secure = false;
   cookieOptions.sameSite = 'lax';
