@@ -8,21 +8,6 @@ const { sendEmail } = require('../utils/sendEmail');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Cấu hình cookie options tối ưu cho cả máy tính và điện thoại (Cross-site)
-const isProduction = process.env.NODE_ENV === 'production';
-const cookieOptions = {
-  httpOnly: true,
-  secure: true, // Bắt buộc phải có Secure khi dùng SameSite=none
-  sameSite: 'none', // Cho phép gửi cookie giữa các domain khác nhau
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
-};
-
-// Nếu đang chạy local (không có HTTPS), phải tắt Secure và đổi SameSite
-if (!isProduction) {
-  cookieOptions.secure = false;
-  cookieOptions.sameSite = 'lax';
-}
-
 // Test gửi email để debug trên Production
 const testEmail = async (req, res) => {
   const targetEmail = req.query.email || process.env.RESEND_FROM_EMAIL || process.env.FROM_EMAIL;
@@ -72,26 +57,24 @@ const testEmail = async (req, res) => {
   }
 };
 
-// Helper tạo token và gửi cookie
+// Helper: tạo JWT và trả về trong response body
 const sendTokenResponse = (user, statusCode, res) => {
   const token = jwt.sign(
-    { id: user.id, email: user.email, role: user.role }, 
-    JWT_SECRET, 
+    { id: user.id, email: user.email, role: user.role },
+    JWT_SECRET,
     { expiresIn: '7d' }
   );
 
-  res
-    .status(statusCode)
-    .cookie('token', token, cookieOptions)
-    .json({
-      message: 'Thành công',
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role
-      }
-    });
+  res.status(statusCode).json({
+    message: 'Thành công',
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role
+    }
+  });
 };
 
 const register = async (req, res) => {
@@ -251,10 +234,7 @@ const googleLogin = async (req, res) => {
 };
 
 const logout = (req, res) => {
-  res.cookie('token', 'none', {
-    ...cookieOptions,
-    expires: new Date(Date.now() + 10 * 1000)
-  });
+  // JWT is stateless — client simply discards the token from localStorage
   res.status(200).json({ message: 'Đã đăng xuất' });
 };
 

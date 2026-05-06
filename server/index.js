@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
@@ -79,7 +78,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser()); // Sử dụng cookie-parser
 app.use('/uploads', express.static(uploadDir));
 
 // Routes

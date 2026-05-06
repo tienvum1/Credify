@@ -3,12 +3,8 @@ import { createRoot } from 'react-dom/client'
 import './index.scss'
 import App from './App.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import axios from 'axios'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-
-// Cấu hình axios để gửi cookie tự động
-axios.defaults.withCredentials = true;
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

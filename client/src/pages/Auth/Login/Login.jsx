@@ -25,7 +25,7 @@ const Login = () => {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', formData);
-      // Lưu thông tin user vào localStorage (không lưu token vì đã dùng cookie)
+      localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       window.location.href = '/';
     } catch (err) {
@@ -40,6 +40,7 @@ const Login = () => {
       const res = await api.post('/auth/google-login', {
         credential: credentialResponse.credential
       });
+      localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       window.location.href = '/';
     } catch (err) {

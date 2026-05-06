@@ -57,18 +57,26 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Kiểm tra phiên đăng nhập qua Cookie
+    // Kiểm tra phiên đăng nhập qua JWT trong localStorage
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     api.get('/auth/me')
       .then(res => {
         const userData = res.data.user;
         setUser(userData);
         setLoading(false);
-        // Khởi tạo Socket khi có user
         if (userData) {
           initSocket(userData);
         }
       })
       .catch(() => {
+        // Token hết hạn hoặc không hợp lệ — xóa khỏi storage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setUser(null);
         setLoading(false);
       });
@@ -82,10 +90,13 @@ function App() {
     try {
       await api.get('/auth/logout');
       disconnectSocket();
-      setUser(null);
-      window.location.href = '/login';
     } catch (err) {
       console.error('Lỗi đăng xuất:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      window.location.href = '/login';
     }
   };
 
