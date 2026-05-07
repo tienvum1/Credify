@@ -42,7 +42,7 @@ const Home = () => {
       <section className="hero-section">
         <div className="hero-content">
           <h1>Chào mừng đến với <span className="brand-accent">Credify</span></h1>
-          <p>Biến hạn mức thành tiền mặt trong tích tắc</p>
+        
         </div>
       </section>
 

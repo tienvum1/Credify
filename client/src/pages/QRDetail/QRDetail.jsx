@@ -14,6 +14,7 @@ const QRDetail = () => {
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [amount, setAmount] = useState('');
+  const [amountDisplay, setAmountDisplay] = useState('');
   const [submittingCreate, setSubmittingCreate] = useState(false);
   const [savedBankAccounts, setSavedBankAccounts] = useState([]);
   const [selectedBankId, setSelectedBankId] = useState(null);
@@ -31,6 +32,7 @@ const QRDetail = () => {
       setBankAccountNumber('');
       setAccountHolderName('');
       setAmount('');
+      setAmountDisplay('');
       setSelectedBankQrImage(null);
     });
 
@@ -285,14 +287,13 @@ const QRDetail = () => {
               <input
                 type="text"
                 inputMode="numeric"
-                value={amount}
+                value={amountDisplay}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, ''); // Chỉ giữ lại số
+                  const val = e.target.value.replace(/\D/g, '');
                   setAmount(val);
+                  setAmountDisplay(val.replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
                 }}
                 placeholder="Nhập số tiền (VNĐ)"
-                min="0"
-                max={Number.isFinite(computed.maxAmountNumber) ? computed.maxAmountNumber : undefined}
               />
             </label>
             {Number.isFinite(computed.maxAmountNumber) && (
