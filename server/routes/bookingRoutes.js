@@ -40,7 +40,7 @@ router.post(
 router.get("/staff", protect, authorize("staff", "admin_system"), staffGetBookings);
 router.get("/staff/stats", protect, authorize("staff", "admin_system"), getStaffStats);
 router.get("/staff/:id", protect, authorize("staff", "admin_system"), staffGetBookingDetail);
-router.patch("/:id/validity", protect, authorize("staff", "admin_system"), updateBookingValidity);
+router.patch("/:id/validity", protect, authorize("admin_system", "accountant"), updateBookingValidity);
 router.patch("/:id/claim", protect, authorize("staff", "admin_system"), claimBooking);
 router.patch(
   "/:id/confirm",

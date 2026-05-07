@@ -185,13 +185,14 @@ const AccountantBookingManager = () => {
                     <th>Thông tin Admin (Nguồn tiền)</th>
                     <th>Thời gian</th>
                     <th>Trạng thái</th>
+                    <th>Xác nhận</th>
                     <th className="actions-col">Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bookings.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="empty-row">
+                      <td colSpan="7" className="empty-row">
                         <div className="empty-state">
                           <AlertCircle size={32} />
                           <p>Không có đơn hàng nào cần xử lý</p>
@@ -211,6 +212,15 @@ const AccountantBookingManager = () => {
                         </td>
                         <td>{new Date(b.created_at).toLocaleString('vi-VN')}</td>
                         <td>{getStatusBadge(b.status)}</td>
+                        <td>
+                          {b.is_valid === 'yes' ? (
+                            <span className="valid-badge yes">✓ Hợp lệ</span>
+                          ) : b.is_valid === 'no' ? (
+                            <span className="valid-badge no">✗ Không hợp lệ</span>
+                          ) : (
+                            <span className="valid-badge none">—</span>
+                          )}
+                        </td>
                         <td className="actions-col">
                           <button className="detail-btn" onClick={() => navigate(`/accountant/bookings/${b.id}`)}>
                             <Eye size={16} /> Chi tiết

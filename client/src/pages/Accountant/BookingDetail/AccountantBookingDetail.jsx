@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import {
   ChevronLeft,
-  Upload, Shield, FileText, QrCode, ZoomIn
+  Upload, Shield, FileText, QrCode, ZoomIn, CheckCircle, XCircle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import './AccountantBookingDetail.scss';
@@ -16,6 +16,8 @@ const AccountantBookingDetail = () => {
   const [proofFiles, setProofFiles] = useState([]);
   const [proofPreviews, setProofPreviews] = useState([]);
   const [updating, setUpdating] = useState(false);
+  const [validityUpdating, setValidityUpdating] = useState(false);
+  const [validityModal, setValidityModal] = useState(null); // 'yes' | 'no' | null
   const [lightbox, setLightbox] = useState(null); // URL đang xem phóng to
 
   useEffect(() => {
@@ -84,6 +86,21 @@ const AccountantBookingDetail = () => {
   const formatMoney = (amount) =>
     Number(amount || 0).toLocaleString('vi-VN') + 'đ';
 
+  const handleUpdateValidity = async (value) => {
+    if (booking.is_valid !== null) return;
+    setValidityUpdating(true);
+    try {
+      await api.patch(`/bookings/${id}/validity`, { is_valid: value });
+      setBooking(prev => ({ ...prev, is_valid: value }));
+      toast.success(`Đã xác nhận: ${value === 'yes' ? 'CÓ' : 'KHÔNG'}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi xác nhận');
+    } finally {
+      setValidityUpdating(false);
+      setValidityModal(null);
+    }
+  };
+
   if (loading) return (
     <div className="acc-loading">
       <div className="acc-spinner" />
@@ -91,7 +108,7 @@ const AccountantBookingDetail = () => {
   );
   if (!booking) return null;
 
-  const isPending = booking.status === 'staff_confirmed';
+  const isPending = booking.status !== 'accountant_paid';
 
   return (
     <div className="acc-detail">
@@ -103,7 +120,9 @@ const AccountantBookingDetail = () => {
         <div className="acc-title-row">
           <h1>Đơn #{booking.code.slice(-8).toUpperCase()}</h1>
           <span className={`acc-status-badge ${booking.status}`}>
-            {isPending ? 'Chờ thanh toán' : 'Đã hoàn tất'}
+            {booking.status === 'accountant_paid' ? 'Đã hoàn tất' :
+             booking.status === 'staff_confirmed' ? 'Chờ kế toán chuyển' :
+             'Khách đã gửi bill'}
           </span>
         </div>
       </div>
@@ -194,6 +213,46 @@ const AccountantBookingDetail = () => {
 
         {/* ── RIGHT COLUMN ── */}
         <div className="acc-right">
+
+          {/* ── Validity card ── */}
+          <div className="acc-card validity-card">
+            <div className="acc-card-header">
+              <CheckCircle size={18} />
+              <span>Xác nhận hợp lệ</span>
+            </div>
+            <div className="acc-card-body">
+              {booking.is_valid !== null ? (
+                <div className={`validity-result ${booking.is_valid}`}>
+                  {booking.is_valid === 'yes' ? (
+                    <><CheckCircle size={20} /> Đã xác nhận: <strong>CÓ</strong> — Đơn hợp lệ</>
+                  ) : (
+                    <><XCircle size={20} /> Đã xác nhận: <strong>KHÔNG</strong> — Đơn không hợp lệ</>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="validity-hint">Xác nhận bill của khách có hợp lệ không?</p>
+                  <div className="validity-btns">
+                    <button
+                      className="validity-btn yes"
+                      onClick={() => setValidityModal('yes')}
+                      disabled={validityUpdating}
+                    >
+                      <CheckCircle size={16} /> CÓ
+                    </button>
+                    <button
+                      className="validity-btn no"
+                      onClick={() => setValidityModal('no')}
+                      disabled={validityUpdating}
+                    >
+                      <XCircle size={16} /> KHÔNG
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
           {isPending ? (
             <div className="acc-card confirm-card">
               <div className="acc-card-header">
@@ -201,44 +260,52 @@ const AccountantBookingDetail = () => {
                 <span>Xác nhận chuyển tiền</span>
               </div>
               <div className="acc-card-body">
-                <p className="confirm-hint">
-                  Sau khi chuyển tiền thành công, tải ảnh biên lai để xác nhận (tối đa 3 ảnh).
-                </p>
+                {booking.is_valid !== 'yes' ? (
+                  <div className="upload-blocked">
+                    <p>⚠️ Vui lòng xác nhận đơn hàng là <strong>CÓ</strong> hợp lệ trước khi upload bill chuyển tiền.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="confirm-hint">
+                      Sau khi chuyển tiền thành công, tải ảnh biên lai để xác nhận (tối đa 3 ảnh).
+                    </p>
 
-                <div className="upload-grid">
-                  {proofPreviews.map((preview, idx) => (
-                    <div key={idx} className="upload-preview">
-                      <img src={preview} alt={`Preview ${idx + 1}`} />
-                      <button
-                        type="button"
-                        className="upload-remove"
-                        onClick={() => removeFile(idx)}
-                      >×</button>
+                    <div className="upload-grid">
+                      {proofPreviews.map((preview, idx) => (
+                        <div key={idx} className="upload-preview">
+                          <img src={preview} alt={`Preview ${idx + 1}`} />
+                          <button
+                            type="button"
+                            className="upload-remove"
+                            onClick={() => removeFile(idx)}
+                          >×</button>
+                        </div>
+                      ))}
+
+                      {proofFiles.length < 3 && (
+                        <label className="upload-add">
+                          <input
+                            type="file"
+                            hidden
+                            multiple
+                            accept="image/*"
+                            onChange={handleFileChange}
+                          />
+                          <Upload size={22} />
+                          <span>Thêm ảnh</span>
+                        </label>
+                      )}
                     </div>
-                  ))}
 
-                  {proofFiles.length < 3 && (
-                    <label className="upload-add">
-                      <input
-                        type="file"
-                        hidden
-                        multiple
-                        accept="image/*"
-                        onChange={handleFileChange}
-                      />
-                      <Upload size={22} />
-                      <span>Thêm ảnh</span>
-                    </label>
-                  )}
-                </div>
-
-                <button
-                  className="confirm-btn"
-                  onClick={handleConfirmPaid}
-                  disabled={updating || proofFiles.length === 0}
-                >
-                  {updating ? 'Đang lưu...' : '✓ Xác nhận đã chuyển tiền'}
-                </button>
+                    <button
+                      className="confirm-btn"
+                      onClick={handleConfirmPaid}
+                      disabled={updating || proofFiles.length === 0}
+                    >
+                      {updating ? 'Đang lưu...' : '✓ Xác nhận đã chuyển tiền'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -250,7 +317,11 @@ const AccountantBookingDetail = () => {
               <div className="acc-card-body">
                 <p className="completed-time">
                   Chuyển tiền lúc:{' '}
-                  <strong>{new Date(booking.accountant_paid_at).toLocaleString('vi-VN')}</strong>
+                  <strong>
+                    {booking.accountant_paid_at
+                      ? new Date(booking.accountant_paid_at).toLocaleString('vi-VN')
+                      : '—'}
+                  </strong>
                 </p>
 
                 {booking.proof_urls && booking.proof_urls.length > 0 && (
@@ -282,6 +353,39 @@ const AccountantBookingDetail = () => {
           <div className="acc-lightbox-inner" onClick={e => e.stopPropagation()}>
             <button className="acc-lightbox-close" onClick={() => setLightbox(null)}>×</button>
             <img src={lightbox} alt="Preview" />
+          </div>
+        </div>
+      )}
+
+      {/* ── Validity confirm modal ── */}
+      {validityModal && (
+        <div className="acc-lightbox" onClick={() => !validityUpdating && setValidityModal(null)}>
+          <div className="validity-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className={`modal-icon ${validityModal}`}>
+              {validityModal === 'yes' ? <CheckCircle size={32} /> : <XCircle size={32} />}
+            </div>
+            <h3>Xác nhận đơn hàng</h3>
+            <p>
+              Bạn có chắc chắn muốn xác nhận đơn này là{' '}
+              <strong>{validityModal === 'yes' ? 'CÓ' : 'KHÔNG'}</strong> hợp lệ không?
+            </p>
+            <p className="modal-warning">⚠️ Sau khi xác nhận, bạn sẽ không thể thay đổi.</p>
+            <div className="modal-actions">
+              <button
+                className="modal-cancel"
+                onClick={() => setValidityModal(null)}
+                disabled={validityUpdating}
+              >
+                Huỷ
+              </button>
+              <button
+                className={`modal-confirm ${validityModal}`}
+                onClick={() => handleUpdateValidity(validityModal)}
+                disabled={validityUpdating}
+              >
+                {validityUpdating ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
           </div>
         </div>
       )}

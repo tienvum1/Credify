@@ -526,20 +526,21 @@ const claimBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
     const staff_id = req.user.id;
+    const isAdmin = req.user.role === 'admin_system';
 
-    // Kiểm tra xem đơn có đang ở trạng thái chờ xử lý (customer_paid) và chưa có ai nhận không
     const [existing] = await pool.query(
       "SELECT status, staff_id FROM bookings WHERE id = ? LIMIT 1",
       [bookingId]
     );
 
     if (existing.length === 0) return res.status(404).json({ message: "Không tìm thấy đơn" });
-    
-    if (!['created', 'customer_paid'].includes(existing[0].status)) {
+
+    if (!['customer_paid'].includes(existing[0].status)) {
       return res.status(400).json({ message: "Đơn này không ở trạng thái cho phép nhận xử lý" });
     }
 
-    if (existing[0].staff_id) {
+    // Admin có thể nhận bất kỳ đơn nào; staff chỉ nhận đơn chưa có người xử lý
+    if (!isAdmin && existing[0].staff_id) {
       return res.status(400).json({ message: "Đơn này đã có nhân viên khác nhận xử lý" });
     }
 
@@ -560,15 +561,13 @@ const updateBookingValidity = async (req, res) => {
   try {
     const { id } = req.params;
     const { is_valid } = req.body;
-    const staff_id = req.user.id;
 
     if (!['yes', 'no'].includes(is_valid)) {
       return res.status(400).json({ message: "Giá trị không hợp lệ. Phải là 'yes' hoặc 'no'" });
     }
 
-    // Kiểm tra đơn hàng tồn tại và quyền sở hữu
     const [existingRows] = await pool.query(
-      "SELECT id, staff_id FROM bookings WHERE id = ? LIMIT 1",
+      "SELECT id FROM bookings WHERE id = ? LIMIT 1",
       [id]
     );
 
@@ -576,27 +575,15 @@ const updateBookingValidity = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
-    const booking = existingRows[0];
-
-    // Kiểm tra xem đơn đã có người nhận chưa
-    if (!booking.staff_id) {
-      return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
-    }
-
-    // Chỉ người đang xử lý đơn mới có quyền xác nhận
-    if (Number(booking.staff_id) !== Number(staff_id)) {
-      return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
-    }
-
     await pool.query(
       "UPDATE bookings SET is_valid = ? WHERE id = ?",
       [is_valid, id]
     );
 
-    res.json({ 
-      status: 'success', 
+    res.json({
+      status: 'success',
       message: `Đã xác nhận trạng thái: ${is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}`,
-      is_valid 
+      is_valid
     });
   } catch (err) {
     console.error("Lỗi cập nhật is_valid:", err);
@@ -780,6 +767,7 @@ const staffConfirmBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
     const staff_id = req.user.id;
+    const isAdmin = req.user.role === 'admin_system';
 
     const [existingRows] = await pool.query(
       "SELECT status, staff_id, staff_paid_proof_urls FROM bookings WHERE id = ? LIMIT 1",
@@ -787,22 +775,21 @@ const staffConfirmBooking = async (req, res) => {
     );
     if (existingRows.length === 0)
       return res.status(404).json({ message: "Không tìm thấy đơn" });
-    
+
     const booking = existingRows[0];
 
-    // Chỉ người đã nhận đơn mới được xác nhận
-    if (!booking.staff_id) {
-      return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
-    }
-
-    if (Number(booking.staff_id) !== Number(staff_id)) {
-      return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
+    // Admin có thể xác nhận bất kỳ đơn nào; staff chỉ xác nhận đơn của mình
+    if (!isAdmin) {
+      if (!booking.staff_id) {
+        return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
+      }
+      if (Number(booking.staff_id) !== Number(staff_id)) {
+        return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
+      }
     }
 
     if (booking.status !== "customer_paid") {
-      return res
-        .status(400)
-        .json({ message: "Đơn chưa ở trạng thái khách đã chuyển tiền" });
+      return res.status(400).json({ message: "Đơn chưa ở trạng thái khách đã chuyển tiền" });
     }
 
     const files = req.files || [];
@@ -812,30 +799,24 @@ const staffConfirmBooking = async (req, res) => {
     const staffProofUrls = JSON.stringify(files.map(f => f.path));
 
     await pool.query(
-      `
-        UPDATE bookings
-        SET status = 'staff_confirmed', staff_id = ?, staff_paid_proof_urls = ?, confirmed_at = NOW()
-        WHERE id = ?
-      `,
+      `UPDATE bookings
+       SET status = 'staff_confirmed', staff_id = ?, staff_paid_proof_urls = ?, confirmed_at = NOW()
+       WHERE id = ?`,
       [staff_id, staffProofUrls, bookingId]
     );
 
-    // Thông báo cho khách hàng khi đơn được xác nhận (Gửi không chặn)
     const [bookingRow] = await pool.query("SELECT customer_id, code FROM bookings WHERE id = ?", [bookingId]);
     if (bookingRow.length > 0) {
       createNotification(
         bookingRow[0].customer_id,
         "Đơn hàng được xác nhận",
-        `Đơn hàng ${bookingRow[0].code.slice(-6)} đã được nhân viên xác nhận thành công.`,
+        `Đơn hàng ${bookingRow[0].code.slice(-6)} đã được xác nhận thành công.`,
         "staff_confirmed",
         bookingId
       ).catch(err => console.error("Lỗi gửi thông báo xác nhận đơn cho khách:", err));
     }
 
-    const [rows] = await pool.query(
-      "SELECT * FROM bookings WHERE id = ? LIMIT 1",
-      [bookingId]
-    );
+    const [rows] = await pool.query("SELECT * FROM bookings WHERE id = ? LIMIT 1", [bookingId]);
     res.json({ message: "Đã chuyển tiền cho khách", booking: enrichBooking(rows[0]) });
     cache.del("staff_stats");
   } catch (err) {
@@ -848,6 +829,7 @@ const staffRejectBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
     const staff_id = req.user.id;
+    const isAdmin = req.user.role === 'admin_system';
     const rejectNote = String(req.body?.note || "").trim();
 
     if (!rejectNote) {
@@ -861,16 +843,17 @@ const staffRejectBooking = async (req, res) => {
     if (existingRows.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy đơn" });
     }
-    
+
     const booking = existingRows[0];
 
-    // Chỉ người đã nhận đơn mới được từ chối
-    if (!booking.staff_id) {
-      return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
-    }
-
-    if (Number(booking.staff_id) !== Number(staff_id)) {
-      return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
+    // Admin có thể từ chối bất kỳ đơn nào; staff chỉ từ chối đơn của mình
+    if (!isAdmin) {
+      if (!booking.staff_id) {
+        return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
+      }
+      if (Number(booking.staff_id) !== Number(staff_id)) {
+        return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
+      }
     }
 
     if (booking.status !== "customer_paid") {
@@ -878,15 +861,12 @@ const staffRejectBooking = async (req, res) => {
     }
 
     await pool.query(
-      `
-        UPDATE bookings
-        SET status = 'rejected', staff_id = ?, reject_note = ?, confirmed_at = NOW()
-        WHERE id = ?
-      `,
+      `UPDATE bookings
+       SET status = 'rejected', staff_id = ?, reject_note = ?, confirmed_at = NOW()
+       WHERE id = ?`,
       [staff_id, rejectNote, bookingId]
     );
 
-    // Thông báo cho khách hàng khi đơn bị từ chối (Gửi không chặn)
     const [bookingRow] = await pool.query("SELECT customer_id, code FROM bookings WHERE id = ?", [bookingId]);
     if (bookingRow.length > 0) {
       createNotification(
@@ -898,10 +878,7 @@ const staffRejectBooking = async (req, res) => {
       ).catch(err => console.error("Lỗi gửi thông báo từ chối đơn cho khách:", err));
     }
 
-    const [rows] = await pool.query(
-      "SELECT * FROM bookings WHERE id = ? LIMIT 1",
-      [bookingId]
-    );
+    const [rows] = await pool.query("SELECT * FROM bookings WHERE id = ? LIMIT 1", [bookingId]);
     res.json({ message: "Đã từ chối đơn", booking: enrichBooking(rows[0]) });
     cache.del("staff_stats");
   } catch (err) {
@@ -910,14 +887,14 @@ const staffRejectBooking = async (req, res) => {
   }
 };
 
-// Kế toán lấy tất cả các đơn hàng cần xử lý (đơn đã được staff xác nhận và is_valid = 'yes')
+// Kế toán lấy tất cả đơn hàng mà khách đã upload bill (không lọc theo is_valid)
 const accountantGetBookings = async (req, res) => {
   try {
     const { status, search, page = 1, limit = 10, dateRange = 'all' } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Lọc theo is_valid = 'yes'
-    let whereSql = "WHERE b.is_valid = 'yes' AND b.status IN ('staff_confirmed', 'customer_paid', 'accountant_paid')";
+
+    // Lấy tất cả đơn mà khách đã chuyển tiền (đã up bill)
+    let whereSql = "WHERE b.status IN ('customer_paid', 'staff_confirmed', 'accountant_paid')";
     const params = [];
 
     if (status) {
@@ -946,7 +923,7 @@ const accountantGetBookings = async (req, res) => {
       `
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN b.status = 'staff_confirmed' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN b.status IN ('customer_paid', 'staff_confirmed') THEN 1 END) as pending_count,
         COUNT(CASE WHEN b.status = 'accountant_paid' THEN 1 END) as completed_count,
         SUM(CASE WHEN b.status = 'accountant_paid' THEN b.transfer_amount ELSE 0 END) as total_amount
       FROM bookings b 
@@ -1006,7 +983,7 @@ const accountantGetBookingDetail = async (req, res) => {
         JOIN users u ON u.id = b.customer_id
         LEFT JOIN users s ON s.id = b.staff_id
         JOIN qrs q ON q.id = b.qr_id
-        WHERE b.id = ? AND b.is_valid = 'yes'
+        WHERE b.id = ?
         LIMIT 1
       `,
       [bookingId]
@@ -1037,8 +1014,8 @@ const accountantConfirmPaid = async (req, res) => {
     const [existing] = await pool.query("SELECT * FROM bookings WHERE id = ?", [bookingId]);
     if (existing.length === 0) return res.status(404).json({ message: "Không tìm thấy đơn" });
     
-    if (existing[0].status !== 'staff_confirmed') {
-      return res.status(400).json({ message: "Đơn này chưa được nhân viên xác nhận hoặc đã được thanh toán" });
+    if (!['staff_confirmed', 'customer_paid'].includes(existing[0].status)) {
+      return res.status(400).json({ message: "Đơn này chưa được khách thanh toán hoặc đã được kế toán xử lý" });
     }
 
     await pool.query(

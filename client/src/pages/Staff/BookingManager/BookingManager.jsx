@@ -353,7 +353,7 @@ const BookingManager = () => {
                   </td>
                   <td className="td-actions">
                     <div className="row-actions">
-                      {['created', 'customer_paid'].includes(b.status) && !b.staff_id && (
+                      {b.status === 'customer_paid' && !b.staff_id && (
                         <button 
                           className="claim-btn" 
                           onClick={() => {

@@ -279,7 +279,7 @@ const AdminBookingDetail = () => {
           <tr><th>Cập nhật lúc</th><td data-label="Cập nhật lúc">{formatDateTime(booking.updated_at)}</td></tr>
           <tr><th>Trạng thái</th><td data-label="Trạng thái">{statusLabel(booking.status)}</td></tr>
           
-          {booking.staff_id && (
+          {['customer_paid', 'staff_confirmed', 'accountant_paid'].includes(booking.status) && (
             <tr>
               <th>Xác nhận (Có/Không)</th>
               <td data-label="Xác nhận">
@@ -287,22 +287,21 @@ const AdminBookingDetail = () => {
                   <button 
                     className={`valid-btn yes ${booking.is_valid === 'yes' ? 'active' : ''}`}
                     onClick={() => handleUpdateValidity('yes')}
-                    disabled={updating || booking.is_valid !== null || !isAssignedStaff}
-                    title={!isAssignedStaff ? "Chỉ nhân viên đang xử lý mới được xác nhận" : booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                    disabled={updating || booking.is_valid !== null}
+                    title={booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
                   >
                     CÓ
                   </button>
                   <button 
                     className={`valid-btn no ${booking.is_valid === 'no' ? 'active' : ''}`}
                     onClick={() => handleUpdateValidity('no')}
-                    disabled={updating || booking.is_valid !== null || !isAssignedStaff}
-                    title={!isAssignedStaff ? "Chỉ nhân viên đang xử lý mới được xác nhận" : booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
+                    disabled={updating || booking.is_valid !== null}
+                    title={booking.is_valid !== null ? "Đã xác nhận, không thể thay đổi" : ""}
                   >
                     KHÔNG
                   </button>
-                  {booking.is_valid === null && isAssignedStaff && <span className="validity-hint">(Chưa xác nhận)</span>}
+                  {booking.is_valid === null && <span className="validity-hint">(Chưa xác nhận)</span>}
                   {booking.is_valid !== null && <span className="validity-hint confirmed">✓ Đã xác nhận: {booking.is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}</span>}
-              
                 </div>
               </td>
             </tr>
@@ -373,7 +372,7 @@ const AdminBookingDetail = () => {
           
           {!isAssignedStaff && (
             <p style={{ color: '#ef4444', fontWeight: '700', marginBottom: '16px' }}>
-              ⚠️ Bạn không phải là người đang xử lý đơn hàng này. Chỉ người nhận đơn mới có quyền xác nhận/từ chối.
+              ⚠️ Bạn không phải là người đang xử lý đơn hàng này. Với quyền Admin, bạn vẫn có thể xác nhận hoặc từ chối.
             </p>
           )}
 
@@ -386,14 +385,13 @@ const AdminBookingDetail = () => {
                   className="remove-staff-proof-btn" 
                   onClick={() => removeStaffProof(idx)}
                   title="Xóa ảnh"
-                  disabled={!isAssignedStaff}
                 >
                   ×
                 </button>
               </div>
             ))}
             
-            {(staffProofPreviews.length < 3 && isAssignedStaff) && (
+            {(staffProofPreviews.length < 3) && (
               <label className="staff-file-upload-box">
                 <input 
                   type="file" 
@@ -414,14 +412,14 @@ const AdminBookingDetail = () => {
             <button 
               className="confirm-btn" 
               onClick={handleConfirm}
-              disabled={updating || staffProofs.length === 0 || !isAssignedStaff}
+              disabled={updating || staffProofs.length === 0}
             >
               {updating ? 'Đang xử lý...' : 'Xác nhận hoàn thành & Gửi bill'}
             </button>
             <button 
               className="reject-btn" 
               onClick={handleReject}
-              disabled={updating || !isAssignedStaff}
+              disabled={updating}
             >
               Từ chối đơn
             </button>
