@@ -291,7 +291,7 @@ const MyBookingDetail = () => {
           <div className="payment-grid">
             <section className="qr-panel">
               <div className="qr-image">
-                <img src={qr.image_url} alt={`QR ${qr.id}`} />
+                <img src={qr.qr_image} alt={`QR ${qr.id}`} />
               </div>
               <div className="qr-meta">
                 <div className="qr-meta-row">
