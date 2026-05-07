@@ -20,17 +20,9 @@
 
 .qr-detail-grid {
   display: grid;
-  grid-template-columns: 450px minmax(0, 1fr);
-  align-items: start;
-  gap: 32px;
+  grid-template-columns: minmax(0, 680px);
+  justify-content: center;
   width: 100%;
-  max-width: 100%;
-  table-layout: fixed; // Helps grid items respect column width
-
-  @media (max-width: 992px) {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
-  }
 }
 
 .qr-panel {
@@ -50,19 +42,16 @@
 }
 
 .qr-image {
-  background: #f8fafc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  line-height: 0;
+  width: 100%;
+  overflow: hidden;
 
   img {
-    width: 100%;
-    max-width: 300px;
-    border-radius: 12px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-    background: #fff;
+    display: block;
+    width: 100% !important;
+    height: auto;
+    object-fit: fill;
   }
 }
 

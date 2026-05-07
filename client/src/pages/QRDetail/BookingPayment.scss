@@ -40,7 +40,7 @@
 
 .payment-grid {
   display: grid;
-  grid-template-columns: 450px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: 32px;
 
@@ -51,10 +51,6 @@
 }
 
 .qr-panel {
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  background: #ffffff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   position: sticky;
   top: 24px;
@@ -65,19 +61,13 @@
 }
 
 .qr-image {
-  background: #f8fafc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  line-height: 0;
+  overflow: hidden;
 
   img {
-    width: 100%;
-    max-width: 300px;
-    border-radius: 12px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-    background: #fff;
+    display: block;
+    width: 100% !important;
+    height: auto;
   }
 }
 

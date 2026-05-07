@@ -82,13 +82,7 @@ const AccountantQRManager = () => {
     const formData = new FormData();
     if (mainImageFile) formData.append('main_image', mainImageFile);
     if (qrImageFile) formData.append('qr_image', qrImageFile);
-    formData.append('name', qrName);
     formData.append('max_amount_per_trans', maxAmount.replace(/\./g, ''));
-    formData.append('fee_rate', feeRate);
-    formData.append('fee_rate_l1', feeRateL1);
-    formData.append('fee_rate_l2', feeRateL2);
-    formData.append('fee_rate_l3', feeRateL3);
-    formData.append('note', note);
 
     try {
       await api.put(`/qrs/${editingQr.id}/accountant`, formData);
@@ -129,10 +123,6 @@ const AccountantQRManager = () => {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Tên QR</label>
-              <input type="text" value={qrName} onChange={(e) => setQrName(e.target.value)} required />
-            </div>
-            <div className="form-group">
               <label>Ảnh đại diện (để trống nếu không đổi)</label>
               <input type="file" accept="image/*" onChange={(e) => setMainImageFile(e.target.files[0])} />
             </div>
@@ -143,28 +133,6 @@ const AccountantQRManager = () => {
             <div className="form-group">
               <label>Hạn mức tối đa (VNĐ)</label>
               <input type="text" value={maxAmount} onChange={handleMaxAmountChange} required placeholder="Ví dụ: 4.000.000" />
-            </div>
-            <div className="form-group">
-              <label>Tỷ lệ phí mặc định (%)</label>
-              <input type="number" step="0.01" value={feeRate} onChange={(e) => setFeeRate(e.target.value)} required />
-            </div>
-            <div className="fee-levels-grid">
-              <div className="form-group">
-                <label>Phí Cấp 1 (%)</label>
-                <input type="number" step="0.01" value={feeRateL1} onChange={(e) => setFeeRateL1(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>Phí Cấp 2 (%)</label>
-                <input type="number" step="0.01" value={feeRateL2} onChange={(e) => setFeeRateL2(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>Phí Cấp 3 (%)</label>
-                <input type="number" step="0.01" value={feeRateL3} onChange={(e) => setFeeRateL3(e.target.value)} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Ghi chú</label>
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
             </div>
             <div className="form-actions">
               <button type="submit" className="save-btn" disabled={submitting}>

@@ -192,7 +192,7 @@ const toggleAccountantEditable = async (req, res) => {
 const accountantUpdateQR = async (req, res) => {
   try {
     const qrId = req.params.id;
-    const { name, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, note } = req.body;
+    const { max_amount_per_trans } = req.body;
 
     const [existing] = await pool.query('SELECT * FROM qrs WHERE id = ?', [qrId]);
     if (existing.length === 0) return res.status(404).json({ message: 'Không tìm thấy QR' });
@@ -215,17 +215,11 @@ const accountantUpdateQR = async (req, res) => {
       }
     }
 
-    const updatedName = name !== undefined ? name : existing[0].name;
     const updatedMaxAmount = max_amount_per_trans ?? existing[0].max_amount_per_trans;
-    const updatedFeeDefault = fee_rate ?? existing[0].fee_rate;
-    const updatedFeeL1 = fee_rate_l1 ?? existing[0].fee_rate_l1;
-    const updatedFeeL2 = fee_rate_l2 ?? existing[0].fee_rate_l2;
-    const updatedFeeL3 = fee_rate_l3 ?? existing[0].fee_rate_l3;
-    const updatedNote = note ?? existing[0].note;
 
     await pool.query(
-      'UPDATE qrs SET name = ?, main_image = ?, qr_image = ?, max_amount_per_trans = ?, fee_rate = ?, fee_rate_l1 = ?, fee_rate_l2 = ?, fee_rate_l3 = ?, note = ? WHERE id = ?',
-      [updatedName, main_image, qr_image, updatedMaxAmount, updatedFeeDefault, updatedFeeL1, updatedFeeL2, updatedFeeL3, updatedNote, qrId]
+      'UPDATE qrs SET main_image = ?, qr_image = ?, max_amount_per_trans = ? WHERE id = ?',
+      [main_image, qr_image, updatedMaxAmount, qrId]
     );
 
     res.json({ message: 'Cập nhật QR thành công' });

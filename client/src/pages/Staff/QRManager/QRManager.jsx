@@ -277,7 +277,7 @@ const StaffQRManager = () => {
                     <td data-label="Trạng thái QR" className="td-status">
                       <button
                         type="button"
-                        className="status-toggle-btn"
+                        className={`status-toggle-btn ${qr.status !== 'ready' ? 'inactive' : ''}`}
                         onClick={() => handleToggleStatus(qr)}
                         disabled={updatingId === qr.id}
                         title="Bấm để đổi trạng thái"

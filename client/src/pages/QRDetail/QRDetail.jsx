@@ -188,28 +188,6 @@ const QRDetail = () => {
       </div>
 
       <div className="qr-detail-grid">
-        <section className="qr-panel">
-          <div className="qr-image">
-            <img src={qr.qr_image} alt={`QR ${qr.id}`} />
-          </div>
-          <div className="qr-meta">
-            {qr.name && <div className="qr-name-label">{qr.name}</div>}
-            <div className="qr-meta-row">
-              <span className="label">Số tiền tối đa 1 lần chuyển</span>
-              <span className="value">{formatMoney(qr.max_amount_per_trans)}</span>
-            </div>
-            <div className="qr-meta-row">
-              <span className="label">Phí {user?.level > 0 && `(Cấp ${user.level})`}</span>
-              <span className="value">{computed.feeRateNumber}%</span>
-            </div>
-            {qr.note && (
-              <div className="qr-note">
-                {qr.note}
-              </div>
-            )}
-          </div>
-        </section>
-
         <section className="order-panel">
           <h1>Tạo đơn</h1>
           <div className="order-form">

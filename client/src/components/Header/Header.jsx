@@ -38,8 +38,6 @@ const Header = ({ user, handleLogout }) => {
             ) : (
               <>
                 <Link to="/" className="nav-item" onClick={() => setIsMenuOpen(false)}>Trang chủ</Link>
-                <Link to="/services" className="nav-item" onClick={() => setIsMenuOpen(false)}>Dịch vụ</Link>
-                <Link to="/about" className="nav-item" onClick={() => setIsMenuOpen(false)}>Giới thiệu</Link>
               </>
             )}
           </nav>
@@ -94,12 +92,12 @@ const Header = ({ user, handleLogout }) => {
                     </>
                   )}
 
-                  <Link to="/settings" className="dropdown-item">
+                  {/* <Link to="/settings" className="dropdown-item">
                     <Settings size={16} /> Cài đặt
                   </Link>
                   <Link to="/help" className="dropdown-item">
                     <HelpCircle size={16} /> Hỗ trợ
-                  </Link>
+                  </Link> */}
                   <hr />
                   <button onClick={handleLogout} className="dropdown-item logout-item">
                     <LogOut size={16} /> Đăng xuất

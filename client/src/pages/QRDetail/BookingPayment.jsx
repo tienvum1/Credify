@@ -220,8 +220,16 @@ const BookingPayment = () => {
 
       <div className="payment-grid">
         <section className="qr-panel">
-          <div className="qr-image">
-            <img src={qr.qr_image} alt={`QR ${qr.id}`} />
+          <div style={{ width: '100%', lineHeight: 0, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+            <img
+              src={qr.qr_image}
+              alt={`QR ${qr.id}`}
+              style={{
+                display: 'block',
+                width: '70%',
+                height: 'auto',
+              }}
+            />
           </div>
           <div className="qr-meta">
             <div className="qr-meta-row">
