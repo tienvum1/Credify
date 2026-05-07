@@ -766,3 +766,47 @@
     }
   }
 }
+
+// ── Utility alignment ────────────────────────────────────────────────────────
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+.font-bold {
+  font-weight: 700 !important;
+}
+
+// ── Table footer total row ────────────────────────────────────────────────────
+tfoot .total-row {
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+
+  td {
+    padding: 14px 20px;
+    font-size: 13px;
+    color: #0f172a;
+  }
+}
+
+// ── QR cell with name + id ────────────────────────────────────────────────────
+.qr-id-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  >div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    small {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+  }
+}

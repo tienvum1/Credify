@@ -119,16 +119,15 @@ const createBooking = async (req, res) => {
     const [result] = await pool.query(
       `
         INSERT INTO bookings (
-          code, qr_id, qr_name, customer_id, staff_id, 
+          code, qr_id, customer_id, staff_id, 
           customer_bank_name, customer_account_number, customer_account_holder, customer_bank_qr_image,
           admin_bank_name, admin_account_number, admin_account_holder, admin_bank_qr_image,
           transfer_amount, fee_rate, fee_amount, net_amount, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
       `,
       [
         code,
         qr_id,
-        qr.name || null,
         customer_id,
         null,
         String(customer_bank_name).trim(),
@@ -305,7 +304,7 @@ const getMyBookings = async (req, res) => {
     }
 
     if (qrName) {
-      baseWhereSql += " AND b.qr_name LIKE ?";
+      baseWhereSql += " AND q.name LIKE ?";
       baseParams.push(`%${qrName}%`);
     }
 
@@ -319,7 +318,6 @@ const getMyBookings = async (req, res) => {
       }
     }
 
-    // whereSql dùng cho danh sách (bao gồm lọc trạng thái)
     let listWhereSql = baseWhereSql;
     const listParams = [...baseParams];
 
@@ -328,35 +326,34 @@ const getMyBookings = async (req, res) => {
       listParams.push(status);
     }
 
-    // Lấy thống kê (Stats phản ánh bộ lọc thời gian và tìm kiếm, không lọc theo status)
     const [stats] = await pool.query(
       `
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status IN ('staff_confirmed', 'completed') THEN transfer_amount ELSE 0 END) as total_amount,
-        SUM(CASE WHEN status IN ('staff_confirmed', 'completed') THEN fee_amount ELSE 0 END) as total_fee,
-        COUNT(CASE WHEN status IN ('staff_confirmed', 'completed') THEN 1 END) as completed_count,
-        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
-        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_count,
-        COUNT(CASE WHEN status IN ('created', 'customer_paid') THEN 1 END) as pending_count
+        COUNT(CASE WHEN b.status = 'created' THEN 1 END) as created_count,
+        COUNT(CASE WHEN b.status = 'customer_paid' THEN 1 END) as customer_paid_count,
+        COUNT(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN 1 END) as completed_count,
+        COUNT(CASE WHEN b.status = 'rejected' THEN 1 END) as rejected_count,
+        COUNT(CASE WHEN b.status = 'cancelled' THEN 1 END) as cancelled_count,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.transfer_amount ELSE 0 END) as total_amount,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.fee_amount ELSE 0 END) as total_fee
       FROM bookings b
+      JOIN qrs q ON q.id = b.qr_id
       ${baseWhereSql}
       `,
       baseParams
     );
 
-    // Lấy tổng số để phân trang (theo listWhereSql)
     const [totalRows] = await pool.query(
-      `SELECT COUNT(*) as total FROM bookings b ${listWhereSql}`,
+      `SELECT COUNT(*) as total FROM bookings b JOIN qrs q ON q.id = b.qr_id ${listWhereSql}`,
       listParams
     );
     const total = totalRows[0].total;
 
-    // Lấy danh sách đơn hàng có giới hạn
     const queryParams = [...listParams, parseInt(limit), parseInt(offset)];
     const [rows] = await pool.query(
       `
-        SELECT b.*, q.main_image as qr_main_image, q.qr_image
+        SELECT b.*, q.name as qr_name, q.main_image as qr_main_image, q.qr_image
         FROM bookings b
         JOIN qrs q ON q.id = b.qr_id
         ${listWhereSql}
@@ -425,9 +422,11 @@ const getMyBookingDetail = async (req, res) => {
 
     const [rows] = await pool.query(
       `
-        SELECT b.*, q.main_image as qr_main_image, q.qr_image
+        SELECT b.*, q.name as qr_name, q.main_image as qr_main_image, q.qr_image,
+               s.full_name as staff_name
         FROM bookings b
         JOIN qrs q ON q.id = b.qr_id
+        LEFT JOIN users s ON s.id = b.staff_id
         WHERE b.id = ? AND b.customer_id = ?
         LIMIT 1
       `,
@@ -487,6 +486,19 @@ const getMyBookingDetail = async (req, res) => {
       booking.id_card_urls = [];
     }
 
+    // Parse JSON accountant proof urls
+    if (booking.accountant_paid_proof_urls) {
+      try {
+        booking.accountant_proof_urls = typeof booking.accountant_paid_proof_urls === 'string'
+          ? JSON.parse(booking.accountant_paid_proof_urls)
+          : booking.accountant_paid_proof_urls;
+      } catch (e) {
+        booking.accountant_proof_urls = booking.accountant_paid_proof_url ? [booking.accountant_paid_proof_url] : [];
+      }
+    } else {
+      booking.accountant_proof_urls = booking.accountant_paid_proof_url ? [booking.accountant_paid_proof_url] : [];
+    }
+
     res.json(enrichBooking(booking));
   } catch (err) {
     console.error("Lỗi khi lấy chi tiết đơn của user:", err);
@@ -496,10 +508,10 @@ const getMyBookingDetail = async (req, res) => {
 
 const getStaffStats = async (req, res) => {
   try {
-    const { dateRange = "all", search = "" } = req.query;
+    const { dateRange = "all", search = "", status, processing_status, is_valid, qrName = "" } = req.query;
     
-    // Tạo cache key dựa trên bộ lọc
-    const cacheKey = `staff_stats_${dateRange}_${search}`;
+    // Tạo cache key dựa trên tất cả bộ lọc
+    const cacheKey = `staff_stats_${dateRange}_${search}_${status}_${processing_status}_${is_valid}_${qrName}`;
     const cachedData = cache.get(cacheKey);
     if (cachedData) return res.json(cachedData);
 
@@ -510,6 +522,37 @@ const getStaffStats = async (req, res) => {
       whereSql += " AND (b.code LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)";
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    if (qrName) {
+      whereSql += " AND q.name LIKE ?";
+      params.push(`%${qrName}%`);
+    }
+
+    if (status && status !== "all") {
+      if (status === "staff_confirmed") {
+        whereSql += " AND b.status IN (?, ?)";
+        params.push("staff_confirmed", "completed");
+      } else {
+        whereSql += " AND b.status = ?";
+        params.push(status);
+      }
+    }
+
+    if (is_valid && is_valid !== "all") {
+      if (is_valid === "yes") whereSql += " AND b.is_valid = 'yes'";
+      else if (is_valid === "no") whereSql += " AND b.is_valid = 'no'";
+      else if (is_valid === "null") whereSql += " AND b.is_valid IS NULL";
+    }
+
+    if (processing_status && processing_status !== "all") {
+      if (processing_status === "unclaimed") {
+        whereSql += " AND b.staff_id IS NULL";
+      } else if (processing_status === "processing") {
+        whereSql += " AND b.staff_id IS NOT NULL AND b.status = 'customer_paid'";
+      } else if (processing_status === "processed") {
+        whereSql += " AND b.staff_id IS NOT NULL AND b.status IN ('staff_confirmed', 'completed', 'rejected')";
+      }
     }
 
     if (dateRange !== "all") {
@@ -527,16 +570,19 @@ const getStaffStats = async (req, res) => {
         COUNT(*) as total,
         COUNT(CASE WHEN b.status IN ('created', 'customer_paid') AND b.staff_id IS NULL THEN 1 END) as pending_claim,
         COUNT(CASE WHEN b.status IN ('created', 'customer_paid') AND b.staff_id IS NOT NULL THEN 1 END) as processing,
-        COUNT(CASE WHEN b.status IN ('staff_confirmed', 'completed') THEN 1 END) as completed,
-        COUNT(CASE WHEN b.status = 'rejected' THEN 1 END) as rejected
+        COUNT(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN 1 END) as completed,
+        COUNT(CASE WHEN b.status = 'rejected' THEN 1 END) as rejected,
+        COUNT(CASE WHEN b.status = 'cancelled' THEN 1 END) as cancelled,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.transfer_amount ELSE 0 END) as total_amount,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.fee_amount ELSE 0 END) as total_fee
       FROM bookings b
       LEFT JOIN users u ON u.id = b.customer_id
+      JOIN qrs q ON q.id = b.qr_id
       ${whereSql}
     `, params);
 
     const stats = rows[0];
-    // Cache trong 10 giây cho bộ lọc cụ thể
-    cache.set(cacheKey, stats, 10000);
+    cache.set(cacheKey, stats, 5000);
 
     res.json(stats);
   } catch (err) {
@@ -663,7 +709,7 @@ const staffGetBookings = async (req, res) => {
     }
 
     if (qrName) {
-      whereSql += " AND b.qr_name LIKE ?";
+      whereSql += " AND q.name LIKE ?";
       params.push(`%${qrName}%`);
     }
 
@@ -679,7 +725,7 @@ const staffGetBookings = async (req, res) => {
 
     // Lấy tổng số đơn để phân trang
     const [totalRows] = await pool.query(
-      `SELECT COUNT(*) as total FROM bookings b JOIN users u ON u.id = b.customer_id ${whereSql}`,
+      `SELECT COUNT(*) as total FROM bookings b JOIN users u ON u.id = b.customer_id JOIN qrs q ON q.id = b.qr_id ${whereSql}`,
       params
     );
     const total = totalRows[0].total;
@@ -690,6 +736,7 @@ const staffGetBookings = async (req, res) => {
       `
         SELECT
           b.*,
+          q.name as qr_name,
           q.main_image as qr_main_image,
           q.qr_image,
           u.full_name as customer_name,
@@ -728,6 +775,7 @@ const staffGetBookingDetail = async (req, res) => {
       `
         SELECT
           b.*,
+          q.name as qr_name,
           q.main_image as qr_main_image,
           q.qr_image,
           u.full_name as customer_name,
@@ -795,6 +843,19 @@ const staffGetBookingDetail = async (req, res) => {
       }
     } else {
       booking.id_card_urls = [];
+    }
+
+    // Parse JSON accountant proof urls
+    if (booking.accountant_paid_proof_urls) {
+      try {
+        booking.accountant_proof_urls = typeof booking.accountant_paid_proof_urls === 'string'
+          ? JSON.parse(booking.accountant_paid_proof_urls)
+          : booking.accountant_paid_proof_urls;
+      } catch (e) {
+        booking.accountant_proof_urls = booking.accountant_paid_proof_url ? [booking.accountant_paid_proof_url] : [];
+      }
+    } else {
+      booking.accountant_proof_urls = booking.accountant_paid_proof_url ? [booking.accountant_paid_proof_url] : [];
     }
 
     res.json(enrichBooking(booking));
@@ -980,10 +1041,12 @@ const accountantGetBookings = async (req, res) => {
       `
         SELECT
           b.*,
+          q.name as qr_name,
           u.full_name as customer_name,
           u.email as customer_email,
           s.full_name as staff_name
         FROM bookings b
+        JOIN qrs q ON q.id = b.qr_id
         JOIN users u ON u.id = b.customer_id
         LEFT JOIN users s ON s.id = b.staff_id
         ${whereSql}
@@ -1018,6 +1081,7 @@ const accountantGetBookingDetail = async (req, res) => {
           u.full_name as customer_name,
           u.email as customer_email,
           s.full_name as staff_name,
+          q.name as qr_name,
           q.main_image as qr_main_image,
           q.qr_image as qr_image
         FROM bookings b
@@ -1045,6 +1109,45 @@ const accountantGetBookingDetail = async (req, res) => {
       }
     } else {
       booking.id_card_urls = [];
+    }
+
+    // Parse JSON customer proof urls
+    if (booking.customer_paid_proof_urls) {
+      try {
+        booking.customer_proof_urls = typeof booking.customer_paid_proof_urls === 'string'
+          ? JSON.parse(booking.customer_paid_proof_urls)
+          : booking.customer_paid_proof_urls;
+      } catch (e) {
+        booking.customer_proof_urls = booking.customer_paid_proof_url ? [booking.customer_paid_proof_url] : [];
+      }
+    } else {
+      booking.customer_proof_urls = booking.customer_paid_proof_url ? [booking.customer_paid_proof_url] : [];
+    }
+
+    // Parse JSON staff proof urls
+    if (booking.staff_paid_proof_urls) {
+      try {
+        booking.staff_proof_urls = typeof booking.staff_paid_proof_urls === 'string'
+          ? JSON.parse(booking.staff_paid_proof_urls)
+          : booking.staff_paid_proof_urls;
+      } catch (e) {
+        booking.staff_proof_urls = [];
+      }
+    } else {
+      booking.staff_proof_urls = [];
+    }
+
+    // Parse JSON accountant proof urls
+    if (booking.accountant_paid_proof_urls) {
+      try {
+        booking.proof_urls = typeof booking.accountant_paid_proof_urls === 'string'
+          ? JSON.parse(booking.accountant_paid_proof_urls)
+          : booking.accountant_paid_proof_urls;
+      } catch (e) {
+        booking.proof_urls = booking.accountant_paid_proof_url ? [booking.accountant_paid_proof_url] : [];
+      }
+    } else {
+      booking.proof_urls = booking.accountant_paid_proof_url ? [booking.accountant_paid_proof_url] : [];
     }
 
     res.json(enrichBooking(booking));

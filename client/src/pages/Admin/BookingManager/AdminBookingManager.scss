@@ -16,35 +16,48 @@
 // Dashboard Stats
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
 
-    @media (max-width: 480px) {
-        grid-template-columns: 1fr;
+    &--money {
+        grid-template-columns: repeat(2, 1fr);
+        margin-bottom: 24px;
+
+        .stat-value {
+            font-size: 18px !important;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
 .stat-card {
     background: white;
-    padding: 16px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     border: 1px solid #e2e8f0;
     transition: transform 0.2s, box-shadow 0.2s;
 
     &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 12px -3px rgba(0, 0, 0, 0.08);
     }
 
     .stat-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -57,17 +70,23 @@
         min-width: 0;
 
         .stat-label {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.025em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .stat-value {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 800;
             color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     }
 
@@ -95,10 +114,47 @@
         background: #fef2f2;
         color: #ef4444;
     }
+
+    &.cancelled .stat-icon {
+        background: #f8fafc;
+        color: #94a3b8;
+    }
+
+    &.amount .stat-icon {
+        background: #fefce8;
+        color: #ca8a04;
+    }
+
+    &.fee .stat-icon {
+        background: #fdf4ff;
+        color: #a855f7;
+    }
+}
+
+.loading-skeleton {
+    padding: 16px;
+
+    .skeleton-item {
+        height: 52px;
+        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.5s infinite;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .booking-toolbar {
-    display: flex;
     flex-direction: column; // Chuyển sang cột để title nằm trên
     align-items: center; // Căn giữa toàn bộ toolbar
     gap: 24px;

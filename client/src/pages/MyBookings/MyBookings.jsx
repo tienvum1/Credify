@@ -81,9 +81,10 @@ const MyBookings = () => {
   };
  
   const statusLabel = (status) => {
-    if (status === 'created') return <span className="status-text created">Mới tạo</span>;
+    if (status === 'created') return <span className="status-text created">Chờ thanh toán</span>;
     if (status === 'customer_paid') return <span className="status-text paid">Đang xử lý</span>;
-    if (status === 'staff_confirmed' || status === 'accountant_paid') return <span className="status-text completed">Hoàn thành</span>;
+    if (status === 'staff_confirmed') return <span className="status-text completed">Hoàn thành</span>;
+    if (status === 'accountant_paid') return <span className="status-text completed">Hoàn thành</span>;
     if (status === 'rejected') return <span className="status-text rejected">Đã từ chối</span>;
     if (status === 'cancelled') return <span className="status-text cancelled">Đã hủy</span>;
     return <span className="status-text">{status}</span>;
@@ -214,11 +215,32 @@ const MyBookings = () => {
               <span className="value">{stats.total}</span>
             </div>
           </div>
-          <div className="stat-card pending" onClick={() => { setStatusFilter('created'); setCurrentPage(1); }} style={{ cursor: 'pointer' }}>
-            <div className="stat-icon">⏳</div>
+          <div className="stat-card created" onClick={() => { setStatusFilter('customer_paid'); setCurrentPage(1); }} style={{ cursor: 'pointer' }}>
+            <div className="stat-icon">🔄</div>
             <div className="stat-info">
-              <span className="label">Chờ thanh toán</span>
-              <span className="value">{stats.pending_count ?? 0}</span>
+              <span className="label">Đang xử lý</span>
+              <span className="value">{stats.customer_paid_count ?? 0}</span>
+            </div>
+          </div>
+          <div className="stat-card completed" onClick={() => { setStatusFilter('staff_confirmed'); setCurrentPage(1); }} style={{ cursor: 'pointer' }}>
+            <div className="stat-icon">✅</div>
+            <div className="stat-info">
+              <span className="label">Đã thanh toán</span>
+              <span className="value">{stats.completed_count ?? 0}</span>
+            </div>
+          </div>
+          <div className="stat-card rejected" onClick={() => { setStatusFilter('rejected'); setCurrentPage(1); }} style={{ cursor: 'pointer' }}>
+            <div className="stat-icon">❌</div>
+            <div className="stat-info">
+              <span className="label">Từ chối</span>
+              <span className="value">{stats.rejected_count ?? 0}</span>
+            </div>
+          </div>
+          <div className="stat-card cancelled" onClick={() => { setStatusFilter('cancelled'); setCurrentPage(1); }} style={{ cursor: 'pointer' }}>
+            <div className="stat-icon">🚫</div>
+            <div className="stat-info">
+              <span className="label">Đã hủy</span>
+              <span className="value">{stats.cancelled_count ?? 0}</span>
             </div>
           </div>
           <div className="stat-card amount">

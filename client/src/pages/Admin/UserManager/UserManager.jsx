@@ -268,7 +268,7 @@ const UserManager = () => {
           <table className="excel-table">
             <thead>
               <tr>
-                <th>Người dùng</th>
+                <th>Vai trò & Quyền</th>
                 <th>Vai trò / Cấp độ</th>
                 <th>Thông tin tài khoản</th>
                 <th>Ngày tham gia</th>
@@ -289,14 +289,16 @@ const UserManager = () => {
               ) : (
                 users.map(user => (
                   <tr key={user.id}>
-                    <td data-label="Người dùng">
+                    <td data-label="Vai trò & Quyền">
                       <div className="user-info-cell">
                         <div className="avatar">
-                          {user.full_name?.charAt(0).toUpperCase() || <User size={16} />}
+                          <Shield size={16} />
                         </div>
                         <div className="details">
-                          <div className="name">{user.full_name}</div>
-                          <div className="role-small">{getRoleLabel(user.role)}</div>
+                          <div className="name">{getRoleLabel(user.role)}</div>
+                          <div className="role-small">
+                            {user.role === 'user' ? (user.level === 0 ? 'Mặc định' : `Cấp ${user.level}`) : '—'}
+                          </div>
                         </div>
                       </div>
                     </td>

@@ -222,6 +222,27 @@ const BookingManager = () => {
             <span className="stat-value">{stats.rejected}</span>
           </div>
         </div>
+        <div className="stat-card cancelled">
+          <div className="stat-icon"><XCircle size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Đã hủy</span>
+            <span className="stat-value">{stats.cancelled ?? 0}</span>
+          </div>
+        </div>
+        <div className="stat-card amount">
+          <div className="stat-icon"><BarChart3 size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Tổng tiền</span>
+            <span className="stat-value">{formatMoney(stats.total_amount)}</span>
+          </div>
+        </div>
+        <div className="stat-card fee">
+          <div className="stat-icon"><BarChart3 size={24} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Tổng phí dịch vụ</span>
+            <span className="stat-value">{formatMoney(stats.total_fee)}</span>
+          </div>
+        </div>
       </div>
 
       <div className="booking-toolbar">

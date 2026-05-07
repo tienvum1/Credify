@@ -6,7 +6,6 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
-  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -14,24 +13,15 @@ import {
 import api from '../../../api/axios';
 import './RevenueReport.scss';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const RevenueReport = () => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith('/admin');
-  const [activeTab] = useState(isAdminPath ? 'global' : 'personal'); // 'personal' or 'global'
-  const [reportType, setReportType] = useState('day'); // day, month, year
-  const [data, setData] = useState({ 
-    global: { summary: {}, total: [], byQr: [], byStaff: [] }, 
-    personal: { summary: {}, total: [], byQr: [] } 
+  const [reportType, setReportType] = useState('day');
+  const [data, setData] = useState({
+    global:   { summary: {}, total: [], byQr: [], byStaff: [] },
+    personal: { summary: {}, total: [], byQr: [] }
   });
   const [loading, setLoading] = useState(true);
   const chartContainerRef = useRef(null);
@@ -39,222 +29,169 @@ const RevenueReport = () => {
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
-
-    let timeoutId = null;
-    const resizeObserver = new ResizeObserver(() => {
-      // Debounce để tránh re-render quá nhiều trong lúc transition
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setChartKey(prev => prev + 1);
-      }, 100);
+    let tid = null;
+    const ro = new ResizeObserver(() => {
+      if (tid) clearTimeout(tid);
+      tid = setTimeout(() => setChartKey(k => k + 1), 100);
     });
-
-    resizeObserver.observe(chartContainerRef.current);
-    return () => {
-      resizeObserver.disconnect();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    ro.observe(chartContainerRef.current);
+    return () => { ro.disconnect(); if (tid) clearTimeout(tid); };
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const res = await api.get(`/revenue?type=${reportType}`);
-        if (isMounted) {
-          setData(res.data);
-        }
+        if (active) setData(res.data);
       } catch (err) {
         console.error('Lỗi khi tải báo cáo:', err);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     };
-    loadData();
-    return () => { isMounted = false; };
+    load();
+    return () => { active = false; };
   }, [reportType]);
 
-  const formatCurrency = (amount) => {
-    const n = Math.round(Number(amount));
+  const fmt = (amount) => {
+    const n = Math.round(Number(amount) || 0);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') ;
+  };
+
+  const fmtShort = (amount) => {
+    const n = Math.round(Number(amount) || 0);
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
-  const formatDateDisplay = (dateStr) => {
+  const fmtDate = (dateStr) => {
     if (!dateStr) return '—';
     if (reportType === 'year') return dateStr;
     if (reportType === 'month') {
       const [year, month] = dateStr.split('-');
-      return `${month}/${year}`;
+      return `T${month}/${year}`;
     }
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}/${year}`;
   };
 
-  const options = {
+  const sectionData = isAdminPath ? data.global : data.personal;
+  const summary = sectionData.summary || {};
+
+  const totalRevenue   = Number(summary.total_amount   || 0);
+  const totalFee       = Number(summary.total_fee      || 0);
+  const totalOrders    = Number(summary.completed_count|| 0);
+
+  const periodLabel     = reportType === 'day' ? 'Hôm nay' : reportType === 'month' ? 'Tháng này' : 'Năm nay';
+  const fullPeriodLabel = reportType === 'day' ? 'Tháng này' : reportType === 'month' ? 'Năm này' : 'Toàn thời gian';
+  const groupLabel      = reportType === 'day' ? 'ngày' : reportType === 'month' ? 'tháng' : 'năm';
+
+  // Tổng cộng cho bảng thời gian
+  const totalRow = sectionData.total.reduce((acc, r) => ({
+    total_count:      acc.total_count      + Number(r.total_count      || 0),
+    completed_count:  acc.completed_count  + Number(r.completed_count  || 0),
+    processing_count: acc.processing_count + Number(r.processing_count || 0),
+    rejected_count:   acc.rejected_count   + Number(r.rejected_count   || 0),
+    cancelled_count:  acc.cancelled_count  + Number(r.cancelled_count  || 0),
+    total_amount:     acc.total_amount     + Number(r.total_amount     || 0),
+    total_fee:        acc.total_fee        + Number(r.total_fee        || 0),
+  }), { total_count:0, completed_count:0, processing_count:0, rejected_count:0, cancelled_count:0, total_amount:0, total_fee:0 });
+
+  const chartData = {
+    labels: [...sectionData.total].reverse().map(r => fmtDate(r.label)),
+    datasets: [
+      {
+        label: 'Doanh thu (đ)',
+        data: [...sectionData.total].reverse().map(r => Number(r.total_amount || 0)),
+        backgroundColor: isAdminPath ? 'rgba(99,102,241,0.8)' : 'rgba(16,185,129,0.8)',
+        borderRadius: 8,
+        barThickness: 28,
+      },
+      {
+        label: 'Phí thu (đ)',
+        data: [...sectionData.total].reverse().map(r => Number(r.total_fee || 0)),
+        backgroundColor: 'rgba(244,63,94,0.8)',
+        borderRadius: 8,
+        barThickness: 28,
+      },
+    ],
+  };
+
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { 
-        position: 'bottom', 
-        labels: { 
-          usePointStyle: true, 
-          padding: 20,
-          boxWidth: 8,
-          boxHeight: 8,
-          font: { size: 12, family: "'Plus Jakarta Sans', sans-serif" } 
-        } 
-      },
+      legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 12 } } },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} đ`
+        }
+      }
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: '#f1f5f9', drawBorder: false },
-        ticks: { font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }, color: '#64748b' }
-      },
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }, color: '#64748b' }
-      }
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, color: '#64748b' } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#64748b' } }
     }
   };
 
-  const renderContent = () => {
-    const sectionData = activeTab === 'global' ? data.global : data.personal;
-    const isGlobal = activeTab === 'global';
-    const summary = sectionData.summary || { total_amount: 0, total_fee: 0, completed_count: 0 };
-
-    const totalRevenue = Number(summary.total_amount);
-    const totalFee = Number(summary.total_fee);
-    const totalOrders = Number(summary.completed_count);
-    const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-    const topQr = sectionData.byQr.length > 0 ? sectionData.byQr[0] : null;
-
-    const chartData = {
-      labels: sectionData.total.map(item => item.label).reverse(),
-      datasets: [
-        {
-          label: 'Doanh thu',
-          data: sectionData.total.map(item => item.total_amount).reverse(),
-          backgroundColor: isGlobal ? 'rgba(99, 102, 241, 0.8)' : 'rgba(16, 185, 129, 0.8)',
-          borderRadius: 8,
-          barThickness: 30,
-        },
-        {
-          label: 'Phí thu',
-          data: sectionData.total.map(item => item.total_fee).reverse(),
-          backgroundColor: 'rgba(244, 63, 94, 0.8)',
-          borderRadius: 8,
-          barThickness: 30,
-        }
-      ],
-    };
-
-    const periodLabel = reportType === 'day' ? 'Hôm nay' : reportType === 'month' ? 'Tháng này' : 'Năm nay';
-    const fullPeriodLabel = reportType === 'day' ? 'Tháng này' : reportType === 'month' ? 'Năm này' : 'Toàn thời gian';
-
-    return (
-      <div className="report-content-animate">
-        <div className="filter-container-row">
-          <div className="period-filter">
-            <button className={reportType === 'day' ? 'active' : ''} onClick={() => setReportType('day')}>Ngày</button>
-            <button className={reportType === 'month' ? 'active' : ''} onClick={() => setReportType('month')}>Tháng</button>
-            <button className={reportType === 'year' ? 'active' : ''} onClick={() => setReportType('year')}>Năm</button>
-          </div>
+  return (
+    <div className="revenue-report-container full-width">
+      {/* Header */}
+      <div className="report-header centered">
+        <div className="header-top">
+          <h1>{isAdminPath ? 'Thống kê hệ thống' : 'Báo cáo doanh thu'}</h1>
+          <p className="subtitle">{isAdminPath ? 'Toàn cảnh hoạt động kinh doanh' : 'Theo dõi và phân tích hiệu suất'}</p>
         </div>
+      </div>
 
-        <div className="stats-summary">
-          <div className="stat-card revenue">
-            <div className="stat-info">
-              <span className="label">Tổng doanh thu ({periodLabel})</span>
-              <p className="value">{formatCurrency(totalRevenue)}</p>
-            </div>
-
-          </div>
-          <div className="stat-card fee">
-            <div className="stat-info">
-              <span className="label">Tổng phí thu về ({periodLabel})</span>
-              <p className="value">{formatCurrency(totalFee)}</p>
-            </div>
-          
-          </div>
-          <div className="stat-card orders">
-            <div className="stat-info">
-              <span className="label">Đơn hoàn thành ({periodLabel})</span>
-              <p className="value">{totalOrders.toLocaleString()} <small>đơn</small></p>
-            </div>
-
-          </div>
-          <div className="stat-card avg">
-            <div className="stat-info">
-              <span className="label">Doanh thu TB/đơn ({periodLabel})</span>
-              <p className="value">{formatCurrency(avgOrder)}</p>
-            </div>
-
-          </div>
+      {loading ? (
+        <div className="loading-container">
+          <div className="loader-ring" />
+          <p>Đang tổng hợp dữ liệu...</p>
         </div>
+      ) : (
+        <div className="report-content-animate">
 
-        {/* Bảng thống kê chi tiết theo thời gian */}
-        <div className="table-card period-stats-table">
-          <div className="card-header">
-            <div className="header-left">
-              <h3>Thống kê hiệu suất chi tiết ({fullPeriodLabel})</h3>
-              <p>Danh sách các đơn hàng và doanh thu theo {reportType === 'day' ? 'ngày trong tháng' : reportType === 'month' ? 'tháng trong năm' : 'năm'}</p>
+          {/* Period filter */}
+          <div className="filter-container-row">
+            <div className="period-filter">
+              {['day','month','year'].map(t => (
+                <button key={t} className={reportType === t ? 'active' : ''} onClick={() => setReportType(t)}>
+                  {t === 'day' ? 'Ngày' : t === 'month' ? 'Tháng' : 'Năm'}
+                </button>
+              ))}
             </div>
           </div>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Tổng đơn</th>
-                  <th>Thành công</th>
-                  <th>Đang xử lý</th>
-                  <th>Bị từ chối</th>
-                  <th>Đã hủy</th>
-                  <th>Doanh thu</th>
-                  <th>Phí thu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sectionData.total.map((item, idx) => (
-                  <tr key={idx}>
-                    <td data-label="Thời gian"><strong>{formatDateDisplay(item.label)}</strong></td>
-                    <td data-label="Tổng đơn">{item.total_count.toLocaleString()}</td>
-                    <td data-label="Thành công" className="text-success">{item.completed_count.toLocaleString()}</td>
-                    <td data-label="Đang xử lý" className="text-warning">{item.processing_count.toLocaleString()}</td>
-                    <td data-label="Bị từ chối" className="text-danger">{item.rejected_count.toLocaleString()}</td>
-                    <td data-label="Đã hủy" className="text-muted">{item.cancelled_count.toLocaleString()}</td>
-                    <td data-label="Doanh thu" className="text-revenue font-bold">{formatCurrency(item.total_amount)}</td>
-                    <td data-label="Phí thu" className="text-fee">{formatCurrency(item.total_fee)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
 
-        <div className="charts-grid full-width-chart">
-          <div className="chart-card main-chart">
-            <div className="card-header">
-              <h3>Biểu đồ tăng trưởng doanh thu ({fullPeriodLabel})</h3>
-              <p>Thống kê theo {reportType === 'day' ? 'ngày' : reportType === 'month' ? 'tháng' : 'năm'}</p>
+          {/* Summary cards */}
+          <div className="stats-summary">
+            <div className="stat-card revenue">
+              <div className="stat-info">
+                <span className="label">Tổng doanh thu ({periodLabel})</span>
+                <p className="value">{fmtShort(totalRevenue)} <small>đ</small></p>
+              </div>
             </div>
-            <div className="chart-container" ref={chartContainerRef}>
-              <Bar key={chartKey} options={options} data={chartData} />
+            <div className="stat-card fee">
+              <div className="stat-info">
+                <span className="label">Tổng phí thu về ({periodLabel})</span>
+                <p className="value">{fmtShort(totalFee)} <small>đ</small></p>
+              </div>
+            </div>
+            <div className="stat-card orders">
+              <div className="stat-info">
+                <span className="label">Đơn hoàn thành ({periodLabel})</span>
+                <p className="value">{totalOrders.toLocaleString()} <small>đơn</small></p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Bảng chi tiết theo từng Nhân viên được đưa lên trước bảng QR */}
-        {isGlobal && sectionData.byStaff && sectionData.byStaff.length > 0 && (
-          <div className="table-card staff-revenue-table">
+          {/* Bảng thống kê theo thời gian */}
+          <div className="table-card period-stats-table">
             <div className="card-header">
               <div className="header-left">
-                <h3>Bảng chi tiết theo từng Nhân viên ({fullPeriodLabel})</h3>
-                <p>Danh sách tổng hợp hiệu suất của các nhân viên trong kỳ</p>
+                <h3>Thống kê theo {groupLabel} ({fullPeriodLabel})</h3>
+                <p>Chi tiết đơn hàng và doanh thu từng {groupLabel}</p>
               </div>
             </div>
             <div className="table-wrapper">
@@ -262,114 +199,163 @@ const RevenueReport = () => {
                 <thead>
                   <tr>
                     <th>Thời gian</th>
-                    <th>Nhân viên</th>
-                    <th>Tổng đơn</th>
-                    <th>Thành công</th>
-                    <th>Hủy/Từ chối</th>
-                    <th>Doanh thu</th>
-                    <th>Phí thu</th>
+                    <th className="text-center">Tổng đơn</th>
+                    <th className="text-center text-success">Hoàn thành</th>
+                    <th className="text-center text-warning">Đang xử lý</th>
+                    <th className="text-center text-danger">Từ chối</th>
+                    <th className="text-center text-muted">Đã hủy</th>
+                    <th className="text-right text-revenue">Doanh thu</th>
+                    <th className="text-right text-fee">Phí thu</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sectionData.byStaff.map((staff, idx) => (
+                  {sectionData.total.length === 0 ? (
+                    <tr><td colSpan={8} className="empty-state">Chưa có dữ liệu trong kỳ này</td></tr>
+                  ) : sectionData.total.map((item, idx) => (
                     <tr key={idx}>
-                      <td data-label="Thời gian"><strong>{formatDateDisplay(staff.label)}</strong></td>
-                      <td data-label="Nhân viên">
-                        <div className="staff-info-cell">
-                          <strong>{staff.staff_name}</strong>
-                          <small>ID: #{staff.staff_id}</small>
+                      <td><strong>{fmtDate(item.label)}</strong></td>
+                      <td className="text-center">{Number(item.total_count).toLocaleString()}</td>
+                      <td className="text-center text-success">{Number(item.completed_count).toLocaleString()}</td>
+                      <td className="text-center text-warning">{Number(item.processing_count).toLocaleString()}</td>
+                      <td className="text-center text-danger">{Number(item.rejected_count).toLocaleString()}</td>
+                      <td className="text-center text-muted">{Number(item.cancelled_count).toLocaleString()}</td>
+                      <td className="text-right text-revenue font-bold">{fmt(item.total_amount)}</td>
+                      <td className="text-right text-fee">{fmt(item.total_fee)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                {sectionData.total.length > 0 && (
+                  <tfoot>
+                    <tr className="total-row">
+                      <td><strong>Tổng cộng</strong></td>
+                      <td className="text-center"><strong>{totalRow.total_count.toLocaleString()}</strong></td>
+                      <td className="text-center text-success"><strong>{totalRow.completed_count.toLocaleString()}</strong></td>
+                      <td className="text-center text-warning"><strong>{totalRow.processing_count.toLocaleString()}</strong></td>
+                      <td className="text-center text-danger"><strong>{totalRow.rejected_count.toLocaleString()}</strong></td>
+                      <td className="text-center text-muted"><strong>{totalRow.cancelled_count.toLocaleString()}</strong></td>
+                      <td className="text-right text-revenue"><strong>{fmt(totalRow.total_amount)}</strong></td>
+                      <td className="text-right text-fee"><strong>{fmt(totalRow.total_fee)}</strong></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+
+          {/* Biểu đồ */}
+          <div className="charts-grid full-width-chart">
+            <div className="chart-card main-chart">
+              <div className="card-header">
+                <h3>Biểu đồ doanh thu ({fullPeriodLabel})</h3>
+                <p>Thống kê theo {groupLabel}</p>
+              </div>
+              <div className="chart-container" ref={chartContainerRef}>
+                <Bar key={chartKey} options={chartOptions} data={chartData} />
+              </div>
+            </div>
+          </div>
+
+          {/* Bảng theo nhân viên (chỉ admin) */}
+          {isAdminPath && sectionData.byStaff && sectionData.byStaff.length > 0 && (
+            <div className="table-card staff-revenue-table">
+              <div className="card-header">
+                <div className="header-left">
+                  <h3>Chi tiết theo nhân viên ({fullPeriodLabel})</h3>
+                  <p>Hiệu suất từng nhân viên trong kỳ</p>
+                </div>
+              </div>
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Thời gian</th>
+                      <th>Nhân viên</th>
+                      <th className="text-center">Tổng đơn</th>
+                      <th className="text-center text-success">Hoàn thành</th>
+                      <th className="text-center text-danger">Hủy/Từ chối</th>
+                      <th className="text-right text-revenue">Doanh thu</th>
+                      <th className="text-right text-fee">Phí thu</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sectionData.byStaff.map((s, idx) => (
+                      <tr key={idx}>
+                        <td><strong>{fmtDate(s.label)}</strong></td>
+                        <td>
+                          <div className="staff-info-cell">
+                            <strong>{s.staff_name}</strong>
+                            <small>ID: #{s.staff_id}</small>
+                          </div>
+                        </td>
+                        <td className="text-center">{Number(s.total_count).toLocaleString()}</td>
+                        <td className="text-center text-success">{Number(s.completed_count).toLocaleString()}</td>
+                        <td className="text-center text-danger">{(Number(s.cancelled_count) + Number(s.rejected_count)).toLocaleString()}</td>
+                        <td className="text-right text-revenue font-bold">{fmt(s.total_amount)}</td>
+                        <td className="text-right text-fee">{fmt(s.total_fee)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Bảng theo QR */}
+          <div className="table-card">
+            <div className="card-header">
+              <div className="header-left">
+                <h3>Chi tiết theo QR ({fullPeriodLabel})</h3>
+                <p>Hiệu suất từng thẻ QR trong kỳ</p>
+              </div>
+              {sectionData.byQr.length > 0 && (
+                <div className="top-performer">
+                  <span className="label">Hiệu quả nhất:</span>
+                  <span className="value">{sectionData.byQr[0].qr_name || `QR #${sectionData.byQr[0].qr_id}`}</span>
+                </div>
+              )}
+            </div>
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Thẻ QR</th>
+                    <th className="text-center">Tổng đơn</th>
+                    <th className="text-center text-success">Hoàn thành</th>
+                    <th className="text-center text-danger">Hủy/Từ chối</th>
+                    <th className="text-right text-revenue">Doanh thu</th>
+                    <th className="text-right text-fee">Phí thu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionData.byQr.length === 0 ? (
+                    <tr><td colSpan={7} className="empty-state">Chưa có dữ liệu giao dịch trong kỳ này</td></tr>
+                  ) : sectionData.byQr.map((qr, idx) => (
+                    <tr key={idx}>
+                      <td><strong>{fmtDate(qr.label)}</strong></td>
+                      <td>
+                        <div className="qr-id-cell">
+                          <span className="dot" />
+                          <div>
+                            <strong>{qr.qr_name || `QR #${qr.qr_id}`}</strong>
+                            <small>ID: #{qr.qr_id}</small>
+                          </div>
                         </div>
                       </td>
-                      <td data-label="Tổng đơn">{staff.total_count.toLocaleString()}</td>
-                      <td data-label="Thành công" className="text-success">{staff.completed_count.toLocaleString()}</td>
-                      <td data-label="Hủy/Từ chối" className="text-danger">{(staff.cancelled_count + staff.rejected_count).toLocaleString()}</td>
-                      <td data-label="Doanh thu" className="text-revenue font-bold">
-                        <div>{formatCurrency(staff.total_amount)}</div>
-                      </td>
-                      <td data-label="Phí thu" className="text-fee">
-                        <div>{formatCurrency(staff.total_fee)}</div>
-                      </td>
+                      <td className="text-center">{Number(qr.total_count).toLocaleString()}</td>
+                      <td className="text-center text-success">{Number(qr.completed_count).toLocaleString()}</td>
+                      <td className="text-center text-danger">{(Number(qr.cancelled_count) + Number(qr.rejected_count)).toLocaleString()}</td>
+                      <td className="text-right text-revenue font-bold">{fmt(qr.total_amount)}</td>
+                      <td className="text-right text-fee">{fmt(qr.total_fee)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
-        )}
 
-        <div className="table-card">
-          <div className="card-header">
-            <div className="header-left">
-              <h3>Bảng chi tiết theo từng QR ({fullPeriodLabel})</h3>
-              <p>Danh sách tổng hợp hiệu suất của các thẻ QR trong kỳ</p>
-            </div>
-            {topQr && (
-              <div className="top-performer">
-                <span className="label">Hiệu quả nhất:</span>
-                <span className="value">QR #{topQr.qr_id}</span>
-              </div>
-            )}
-          </div>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Mã Thẻ QR</th>
-                  <th>Tổng đơn</th>
-                  <th>Thành công</th>
-                  <th>Hủy/Từ chối</th>
-                  <th>Doanh thu</th>
-                  <th>Phí thu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sectionData.byQr.map((qr, idx) => (
-                  <tr key={idx}>
-                    <td data-label="Thời gian"><strong>{formatDateDisplay(qr.label)}</strong></td>
-                    <td data-label="Mã Thẻ QR">
-                      <div className="qr-id-cell">
-                        <span className="dot"></span>
-                        <strong>QR #{qr.qr_id}</strong>
-                      </div>
-                    </td>
-                    <td data-label="Tổng đơn">{qr.total_count.toLocaleString()}</td>
-                    <td data-label="Thành công" className="text-success">{qr.completed_count.toLocaleString()}</td>
-                    <td data-label="Hủy/Từ chối" className="text-danger">{(qr.cancelled_count + qr.rejected_count).toLocaleString()}</td>
-                    <td data-label="Doanh thu" className="text-revenue font-bold">
-                      <div>{formatCurrency(qr.total_amount)}</div>
-                    </td>
-                    <td data-label="Phí thu" className="text-fee">
-                      <div>{formatCurrency(qr.total_fee)}</div>
-                    </td>
-                  </tr>
-                ))}
-                {sectionData.byQr.length === 0 && (
-                  <tr><td colSpan="7" className="empty-state">Chưa có dữ liệu giao dịch trong kỳ này</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="revenue-report-container full-width">
-      <div className="report-header centered">
-        <div className="header-top">
-          <h1>{isAdminPath ? 'Thống kê hệ thống' : 'Báo cáo doanh thu'}</h1>
-          <p className="subtitle">{isAdminPath ? 'Toàn cảnh hoạt động kinh doanh' : 'Theo dõi và phân tích hiệu suất kinh doanh'}</p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="loading-container">
-          <div className="loader-ring"></div>
-          <p>Đang tổng hợp dữ liệu...</p>
-        </div>
-      ) : renderContent()}
+      )}
     </div>
   );
 };

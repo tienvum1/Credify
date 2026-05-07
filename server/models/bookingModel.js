@@ -3,7 +3,6 @@ const bookingFields = {
   id: 'INT AUTO_INCREMENT PRIMARY KEY',
   code: 'VARCHAR(40) NOT NULL UNIQUE', // Mã đơn duy nhất
   qr_id: 'INT NOT NULL', // FK tới qrs
-  qr_name: 'VARCHAR(255) NULL', // Tên QR lúc tạo đơn (snapshot)
   customer_id: 'INT NOT NULL', // FK tới users (khách tạo đơn)
   staff_id: 'INT NULL', // FK tới users (staff xử lý đơn)
 

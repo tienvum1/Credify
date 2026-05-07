@@ -26,32 +26,6 @@ const AccountantBookingDetail = () => {
         const res = await api.get(`/bookings/accountant/${id}`);
         const data = res.data;
 
-        // Parse JSON proof urls (accountant bill)
-        if (data.accountant_paid_proof_urls) {
-          try {
-            data.proof_urls = typeof data.accountant_paid_proof_urls === 'string'
-              ? JSON.parse(data.accountant_paid_proof_urls)
-              : data.accountant_paid_proof_urls;
-          } catch {
-            data.proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
-          }
-        } else {
-          data.proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
-        }
-
-        // Parse JSON customer proof urls
-        if (data.customer_paid_proof_urls) {
-          try {
-            data.customer_proof_urls = typeof data.customer_paid_proof_urls === 'string'
-              ? JSON.parse(data.customer_paid_proof_urls)
-              : data.customer_paid_proof_urls;
-          } catch {
-            data.customer_proof_urls = data.customer_paid_proof_url ? [data.customer_paid_proof_url] : [];
-          }
-        } else {
-          data.customer_proof_urls = data.customer_paid_proof_url ? [data.customer_paid_proof_url] : [];
-        }
-
         setBooking(data);
       } catch (error) {
         console.error('Lỗi fetch accountant detail:', error);
@@ -201,83 +175,90 @@ const AccountantBookingDetail = () => {
             </div>
           </div>
 
-          {/* Customer bill */}
-          <div className="acc-card">
-            <div className="acc-card-header">
-              <FileText size={18} />
-              <span>Hóa đơn khách đã chuyển</span>
-            </div>
-            <div className="acc-card-body">
-              {booking.customer_proof_urls && booking.customer_proof_urls.length > 0 ? (
-                <div className="proofs-grid">
-                  {booking.customer_proof_urls.map((url, idx) => (
-                    <div
-                      key={idx}
-                      className="proof-thumb"
-                      onClick={() => setLightbox(url)}
-                      title="Nhấn để phóng to"
-                    >
-                      <img src={url} alt={`Bill khách ${idx + 1}`} />
-                      <div className="proof-zoom"><ZoomIn size={14} /></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="no-proof-text">Chưa có hóa đơn</p>
-              )}
-            </div>
-          </div>
-
-          {/* Accountant bill (hiển thị khi đã hoàn tất) */}
-          {booking.proof_urls && booking.proof_urls.length > 0 && (
-            <div className="acc-card">
-              <div className="acc-card-header success">
-                <Upload size={18} />
-                <span>Hóa đơn hệ thống đã chuyển lại cho khách</span>
-              </div>
-              <div className="acc-card-body">
-                <p className="completed-time">
-                  Chuyển lúc:{' '}
-                  <strong>
-                    {booking.accountant_paid_at
-                      ? new Date(booking.accountant_paid_at).toLocaleString('vi-VN')
-                      : '—'}
-                  </strong>
-                </p>
-                <div className="proofs-grid">
-                  {booking.proof_urls.map((url, idx) => (
-                    <div
-                      key={idx}
-                      className="proof-thumb"
-                      onClick={() => setLightbox(url)}
-                      title="Nhấn để phóng to"
-                    >
-                      <img src={url} alt={`Biên lai kế toán ${idx + 1}`} />
-                      <div className="proof-zoom"><ZoomIn size={14} /></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* CCCD khách */}
-          {booking.id_card_urls && booking.id_card_urls.length > 0 && (
+          {/* Customer bill + CCCD — ngang hàng */}
+          <div className="acc-row-cards">
+            {/* Customer bill */}
             <div className="acc-card">
               <div className="acc-card-header">
-                <Shield size={18} />
-                <span>Ảnh CCCD / Căn cước khách</span>
+                <FileText size={18} />
+                <span>Hóa đơn khách đã chuyển</span>
               </div>
               <div className="acc-card-body">
+                {booking.paid_at && (
+                  <p className="completed-time" style={{ marginBottom: '16px' }}>
+                    Thời gian chuyển:{' '}
+                    <strong>{new Date(booking.paid_at).toLocaleString('vi-VN')}</strong>
+                  </p>
+                )}
+                {booking.customer_proof_urls && booking.customer_proof_urls.length > 0 ? (
+                  <div className="proofs-grid">
+                    {booking.customer_proof_urls.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="proof-thumb"
+                        onClick={() => setLightbox(url)}
+                        title="Nhấn để phóng to"
+                      >
+                        <img src={url} alt={`Bill khách ${idx + 1}`} />
+                        <div className="proof-zoom"><ZoomIn size={14} /></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="no-proof-text">Chưa có hóa đơn</p>
+                )}
+              </div>
+            </div>
+
+            {/* CCCD khách */}
+            {booking.id_card_urls && booking.id_card_urls.length > 0 && (
+              <div className="acc-card">
+                <div className="acc-card-header">
+                  <Shield size={18} />
+                  <span>Ảnh CCCD / Căn cước khách</span>
+                </div>
+                <div className="acc-card-body">
+                  <div className="proofs-grid">
+                    {booking.id_card_urls.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="proof-thumb"
+                        onClick={() => setLightbox(url)}
+                        title="Nhấn để phóng to"
+                      >
+                        <img src={url} alt={`CCCD ${idx + 1}`} />
+                        <div className="proof-zoom"><ZoomIn size={14} /></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Staff bill (chuyển tiền lại cho admin) */}
+          {booking.staff_proof_urls && booking.staff_proof_urls.length > 0 && (
+            <div className="acc-card">
+              <div className="acc-card-header">
+                <Upload size={18} />
+                <span>Hoá đơn nhân viên chuyển cho khách</span>
+              </div>
+              <div className="acc-card-body">
+                {booking.confirmed_at && (
+                  <p className="completed-time" style={{ marginBottom: '16px' }}>
+                    Thời gian chuyển:{' '}
+                    <strong>{new Date(booking.confirmed_at).toLocaleString('vi-VN')}</strong>
+                  </p>
+                )}
                 <div className="proofs-grid">
-                  {booking.id_card_urls.map((url, idx) => (
+                  {booking.staff_proof_urls.map((url, idx) => (
                     <div
                       key={idx}
                       className="proof-thumb"
                       onClick={() => setLightbox(url)}
                       title="Nhấn để phóng to"
                     >
-                      <img src={url} alt={`CCCD ${idx + 1}`} />
+                      <img src={url} alt={`Bill staff ${idx + 1}`} />
                       <div className="proof-zoom"><ZoomIn size={14} /></div>
                     </div>
                   ))}
@@ -285,6 +266,8 @@ const AccountantBookingDetail = () => {
               </div>
             </div>
           )}
+
+          {/* Accountant bill + CCCD — ngang hàng */}
         </div>
 
         {/* ── RIGHT COLUMN ── */}
@@ -391,6 +374,7 @@ const AccountantBookingDetail = () => {
                 <span>Đơn hàng đã hoàn tất</span>
               </div>
               <div className="acc-card-body">
+                <p className="completed-section-label">Thông tin kế toán chuyển tiền cho admin</p>
                 <p className="completed-time">
                   Chuyển tiền lúc:{' '}
                   <strong>
@@ -399,6 +383,21 @@ const AccountantBookingDetail = () => {
                       : '—'}
                   </strong>
                 </p>
+                {booking.proof_urls && booking.proof_urls.length > 0 && (
+                  <div className="proofs-grid" style={{ marginTop: '16px' }}>
+                    {booking.proof_urls.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="proof-thumb"
+                        onClick={() => setLightbox(url)}
+                        title="Nhấn để phóng to"
+                      >
+                        <img src={url} alt={`Biên lai kế toán ${idx + 1}`} />
+                        <div className="proof-zoom"><ZoomIn size={14} /></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

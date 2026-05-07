@@ -227,15 +227,15 @@ const initDB = async () => {
       console.error('Lỗi khi thêm cột qr_image vào bank_accounts:', err.message);
     }
 
-    // Migration: thêm cột qr_name vào bookings nếu chưa có
+    // Migration: xóa cột qr_name khỏi bookings (tên QR lấy live từ bảng qrs qua JOIN)
     try {
       const [qrNameBookingCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'qr_name'");
-      if (qrNameBookingCols.length === 0) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN qr_name VARCHAR(255) NULL AFTER qr_id");
-        console.log('Đã thêm cột qr_name vào bảng bookings');
+      if (qrNameBookingCols.length > 0) {
+        await connection.query("ALTER TABLE bookings DROP COLUMN qr_name");
+        console.log('Đã xóa cột qr_name khỏi bảng bookings');
       }
     } catch (err) {
-      console.error('Lỗi khi thêm cột qr_name vào bookings:', err.message);
+      console.error('Lỗi khi xóa cột qr_name khỏi bookings:', err.message);
     }
 
     // Migration: thêm cột customer_bank_qr_image vào bookings nếu chưa có

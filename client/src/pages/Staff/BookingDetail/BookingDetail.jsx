@@ -63,6 +63,7 @@ const BookingDetail = () => {
         ]);
         
         if (!active) return;
+        console.log('booking data:', bookingRes.data);
         setBooking(bookingRes.data);
         setCurrentUser(userRes.data.user);
       } catch {
@@ -195,6 +196,7 @@ const BookingDetail = () => {
           <tr><th>Tên QR</th><td>{booking.qr_name || '—'}</td></tr>
           <tr><th>ID khách hàng</th><td>{booking.customer_id}</td></tr>
           <tr><th>ID staff</th><td>{booking.staff_id ?? '—'}</td></tr>
+          <tr><th>Nhân viên xử lý</th><td>{booking.staff_name || (booking.staff_id ? `ID: ${booking.staff_id}` : '—')}</td></tr>
           <tr><th>Tên khách</th><td>{booking.customer_name || '—'}</td></tr>
           <tr><th>Email khách</th><td>{booking.customer_email || '—'}</td></tr>
           <tr><th>Số điện thoại</th><td>{booking.customer_phone || 'Chưa cập nhật'}</td></tr>
@@ -242,22 +244,6 @@ const BookingDetail = () => {
               </div>
             </td>
           </tr>
-          {booking.staff_proof_urls && booking.staff_proof_urls.length > 0 && (
-            <tr>
-              <th>Ảnh bill staff chuyển</th>
-              <td>
-                <div className="proof-images-grid">
-                  {booking.staff_proof_urls.map((url, idx) => (
-                    <div key={idx} className="proof-thumb-wrapper staff" onClick={() => setPreviewImageUrl(url)}>
-                      <img src={url} alt={`Staff proof ${idx}`} className="proof-thumb" />
-                      <span className="thumb-label">Bill staff {idx + 1}</span>
-                    </div>
-                  ))
-                }
-                </div>
-              </td>
-            </tr>
-          )}
           {booking.id_card_urls && booking.id_card_urls.length > 0 && (
             <tr>
               <th>Ảnh CCCD khách</th>
@@ -267,6 +253,46 @@ const BookingDetail = () => {
                     <div key={idx} className="proof-thumb-wrapper" onClick={() => setPreviewImageUrl(url)}>
                       <img src={url} alt={`CCCD ${idx + 1}`} className="proof-thumb" />
                       <span className="thumb-label">CCCD {idx + 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          )}
+          {booking.staff_proof_urls && booking.staff_proof_urls.length > 0 && (
+            <tr>
+              <th>Hệ thống gửi lại cho khách</th>
+              <td>
+                {booking.confirmed_at && (
+                  <div style={{ marginBottom: '8px', fontSize: '13px', color: '#64748b' }}>
+                    Thời gian: <strong style={{ color: '#0f172a' }}>{new Date(booking.confirmed_at).toLocaleString('vi-VN')}</strong>
+                  </div>
+                )}
+                <div className="proof-images-grid">
+                  {booking.staff_proof_urls.map((url, idx) => (
+                    <div key={idx} className="proof-thumb-wrapper staff" onClick={() => setPreviewImageUrl(url)}>
+                      <img src={url} alt={`Bill hệ thống ${idx + 1}`} className="proof-thumb" />
+                      <span className="thumb-label">Bill {idx + 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          )}
+          {booking.accountant_proof_urls && booking.accountant_proof_urls.length > 0 && (
+            <tr>
+              <th>Bill kế toán gửi lại cho admin</th>
+              <td>
+                {booking.accountant_paid_at && (
+                  <div style={{ marginBottom: '8px', fontSize: '13px', color: '#64748b' }}>
+                    Thời gian: <strong style={{ color: '#0f172a' }}>{new Date(booking.accountant_paid_at).toLocaleString('vi-VN')}</strong>
+                  </div>
+                )}
+                <div className="proof-images-grid">
+                  {booking.accountant_proof_urls.map((url, idx) => (
+                    <div key={idx} className="proof-thumb-wrapper staff" onClick={() => setPreviewImageUrl(url)}>
+                      <img src={url} alt={`Biên lai ${idx + 1}`} className="proof-thumb" />
+                      <span className="thumb-label">Biên lai {idx + 1}</span>
                     </div>
                   ))}
                 </div>

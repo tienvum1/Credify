@@ -13,8 +13,8 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed, user, handleLogout }) => {
   const menuItems = [
     { 
       path: '/admin/users', 
-      icon: <Users size={20} />, 
-      label: 'Người dùng' 
+      icon: <Shield size={20} />, 
+      label: 'Vai trò & Quyền' 
     },
     { 
       path: '/admin/bookings', 
@@ -40,17 +40,17 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed, user, handleLogout }) => {
       path: '/admin/notifications', 
       icon: <Bell size={20} />, 
       label: 'Thông báo' 
-    },
-    { 
-      path: '/admin/roles', 
-      icon: <Shield size={20} />, 
-      label: 'Vai trò & Quyền' 
-    },
-    { 
-      path: '/admin/settings', 
-      icon: <Settings size={20} />, 
-      label: 'Cấu hình hệ thống' 
-    }
+     },
+    // { 
+    //   path: '/admin/roles', 
+    //   icon: <Shield size={20} />, 
+    //   label: 'Vai trò & Quyền' 
+    // },
+    // { 
+    //   path: '/admin/settings', 
+    //   icon: <Settings size={20} />, 
+    //   label: 'Cấu hình hệ thống' 
+    // }
   ];
 
   return (
@@ -58,7 +58,7 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed, user, handleLogout }) => {
       <div className="sidebar-header">
         <div className="logo-section">
           <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQVW7rlSPHTehp-w35Km0QF380L2eZC-RuZmw&s" alt="Logo" className="logo-img-small" />
-          {!isCollapsed && <span className="logo-text">Credify.vn</span>}
+          {!isCollapsed && <span className="logo-text">Credify</span>}
         </div>
         <button 
           className="collapse-btn" 
