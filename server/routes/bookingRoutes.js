@@ -33,7 +33,10 @@ router.get("/my/:id", protect, getMyBookingDetail);
 router.post(
   "/:id/customer-paid",
   protect,
-  upload.array("proof", 3),
+  upload.fields([
+    { name: 'proof', maxCount: 3 },
+    { name: 'id_card', maxCount: 2 }
+  ]),
   submitCustomerPaid
 );
 

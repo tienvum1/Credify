@@ -192,6 +192,7 @@ const BookingDetail = () => {
           <tr><th>ID đơn</th><td>{booking.id}</td></tr>
           <tr><th>Mã đơn</th><td className="mono">{shortCode(booking.code)}</td></tr>
           <tr><th>ID QR</th><td>{booking.qr_id}</td></tr>
+          <tr><th>Tên QR</th><td>{booking.qr_name || '—'}</td></tr>
           <tr><th>ID khách hàng</th><td>{booking.customer_id}</td></tr>
           <tr><th>ID staff</th><td>{booking.staff_id ?? '—'}</td></tr>
           <tr><th>Tên khách</th><td>{booking.customer_name || '—'}</td></tr>
@@ -253,6 +254,21 @@ const BookingDetail = () => {
                     </div>
                   ))
                 }
+                </div>
+              </td>
+            </tr>
+          )}
+          {booking.id_card_urls && booking.id_card_urls.length > 0 && (
+            <tr>
+              <th>Ảnh CCCD khách</th>
+              <td>
+                <div className="proof-images-grid">
+                  {booking.id_card_urls.map((url, idx) => (
+                    <div key={idx} className="proof-thumb-wrapper" onClick={() => setPreviewImageUrl(url)}>
+                      <img src={url} alt={`CCCD ${idx + 1}`} className="proof-thumb" />
+                      <span className="thumb-label">CCCD {idx + 1}</span>
+                    </div>
+                  ))}
                 </div>
               </td>
             </tr>

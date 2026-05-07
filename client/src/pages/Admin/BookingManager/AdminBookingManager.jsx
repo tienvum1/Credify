@@ -25,6 +25,8 @@ const AdminBookingManager = () => {
   const [validFilter, setValidFilter] = useState('all');
   const [processingFilter, setProcessingFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [qrNameFilter, setQrNameFilter] = useState('');
+  const [qrList, setQrList] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -58,15 +60,14 @@ const AdminBookingManager = () => {
 
   const fetchBookings = async () => {
     try {
-      // Admin lấy toàn bộ đơn hàng (sử dụng API của staff nhưng với quyền admin)
       const res = await api.get('/bookings/staff', { 
         params: {
           status: statusFilter === 'all' ? undefined : statusFilter,
-          limit: 1000 // Lấy số lượng lớn để filter client-side như logic cũ của Admin
+          limit: 1000
         }
       });
-      // API trả về { data: [], total: ... }
-      setBookings(Array.isArray(res.data.data) ? res.data.data : []);
+      const data = Array.isArray(res.data.data) ? res.data.data : [];
+      setBookings(data);
     } catch (err) {
       console.error('Lỗi lấy danh sách đơn:', err);
       setBookings([]);
@@ -74,6 +75,13 @@ const AdminBookingManager = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    api.get('/qrs').then(res => {
+      const names = [...new Set((res.data || []).map(q => q.name).filter(Boolean))].sort();
+      setQrList(names);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -116,6 +124,8 @@ const AdminBookingManager = () => {
       if (!b) return false;
       const key = `${b.code || ''} ${b.customer_name || ''} ${b.customer_email || ''}`.toLowerCase();
       const matchesSearch = key.includes((searchTerm || '').trim().toLowerCase());
+
+      const matchesQrName = !qrNameFilter || b.qr_name === qrNameFilter;
       
       let matchesDate = true;
       if (dateFilter !== 'all') {
@@ -158,7 +168,7 @@ const AdminBookingManager = () => {
         }
       }
 
-      return matchesSearch && matchesDate && matchesValid && matchesProcessing;
+      return matchesSearch && matchesQrName && matchesDate && matchesValid && matchesProcessing;
     })
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -340,6 +350,16 @@ const AdminBookingManager = () => {
           </select>
 
           <select
+            value={qrNameFilter}
+            onChange={(e) => { setQrNameFilter(e.target.value); setCurrentPage(1); }}
+          >
+            <option value="">Tất cả tên QR</option>
+            {qrList.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+
+          <select
             value={processingFilter}
             onChange={(e) => {
               setProcessingFilter(e.target.value);
@@ -385,6 +405,7 @@ const AdminBookingManager = () => {
             <tr>
               <th>ID</th>
               <th className="th-code">Mã đơn</th>
+              <th>Tên QR</th>
               <th>Khách hàng</th>
               <th className="th-money">Tiền chuyển</th>
               <th>Nhân viên xử lý</th>
@@ -398,13 +419,14 @@ const AdminBookingManager = () => {
           <tbody>
             {currentItems.length === 0 ? (
               <tr>
-                <td colSpan={9} className="empty">Không có dữ liệu đơn hàng.</td>
+                <td colSpan={10} className="empty">Không có dữ liệu đơn hàng.</td>
               </tr>
             ) : (
               currentItems.map((b) => (
                 <tr key={b.id}>
                   <td data-label="ID">#{b.id}</td>
                   <td data-label="Mã đơn" className="th-code"><span className="mono">{shortCode(b.code)}</span></td>
+                  <td data-label="Tên QR">{b.qr_name || '—'}</td>
                   <td data-label="Khách hàng">
                     <div className="customer-cell">
                       <span className="name">{b.customer_name}</span>

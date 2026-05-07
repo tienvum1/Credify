@@ -12,6 +12,8 @@ const BookingPayment = () => {
   const [error, setError] = useState('');
   const [proofFiles, setProofFiles] = useState([]);
   const [proofPreviews, setProofPreviews] = useState([]);
+  const [idCardFiles, setIdCardFiles] = useState([]);
+  const [idCardPreviews, setIdCardPreviews] = useState([]);
   const [paymentNote, setPaymentNote] = useState('');
   const [submittingPaid, setSubmittingPaid] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
@@ -134,6 +136,29 @@ const BookingPayment = () => {
     setProofPreviews(newPreviews);
   };
 
+  const handleIdCardChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const newFiles = [...idCardFiles, ...files].slice(0, 2);
+    setIdCardFiles(newFiles);
+    const newPreviews = [];
+    let processed = 0;
+    newFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newPreviews.push(reader.result);
+        processed++;
+        if (processed === newFiles.length) setIdCardPreviews([...newPreviews]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeIdCard = (index) => {
+    setIdCardFiles(idCardFiles.filter((_, i) => i !== index));
+    setIdCardPreviews(idCardPreviews.filter((_, i) => i !== index));
+  };
+
   const handleCustomerPaid = () => {
     if (!booking) return;
     if (booking.status !== 'created') return;
@@ -151,6 +176,9 @@ const BookingPayment = () => {
     const form = new FormData();
     proofFiles.forEach((file) => {
       form.append('proof', file);
+    });
+    idCardFiles.forEach((file) => {
+      form.append('id_card', file);
     });
     if (paymentNote.trim()) form.append('note', paymentNote.trim());
 
@@ -267,6 +295,40 @@ const BookingPayment = () => {
                     <div className="upload-placeholder">
                       <div className="plus-icon">+</div>
                       <span>Thêm ảnh</span>
+                    </div>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div className="field">
+              <span>Ảnh CCCD/Căn cước (tối đa 2 ảnh, tuỳ chọn)</span>
+              <div className="proof-previews-grid">
+                {idCardPreviews.map((preview, index) => (
+                  <div key={index} className="proof-preview-container">
+                    <img src={preview} alt={`CCCD ${index + 1}`} className="proof-preview-img" />
+                    <button
+                      type="button"
+                      className="remove-proof-btn"
+                      onClick={() => removeIdCard(index)}
+                      title="Xóa ảnh"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {idCardFiles.length < 2 && (
+                  <label className="file-upload-box">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleIdCardChange}
+                      disabled={booking.status !== 'created' || submittingPaid || timeLeft === 0}
+                    />
+                    <div className="upload-placeholder">
+                      <div className="plus-icon">+</div>
+                      <span>Thêm ảnh CCCD</span>
                     </div>
                   </label>
                 )}

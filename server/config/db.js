@@ -87,6 +87,17 @@ const initDB = async () => {
       await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_urls JSON NULL AFTER accountant_paid_proof_url");
     }
 
+    // Migration: thêm cột name vào bảng qrs nếu chưa có
+    try {
+      const [qrNameCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'name'");
+      if (qrNameCols.length === 0) {
+        await connection.query("ALTER TABLE qrs ADD COLUMN name VARCHAR(255) NULL AFTER id");
+        console.log('Đã thêm cột name vào bảng qrs');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột name vào qrs:', err.message);
+    }
+
     // Kiểm tra và thêm cột main_image, qr_image vào bảng qrs nếu chưa tồn tại
     const [qrMainCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'main_image'");
     if (qrMainCols.length === 0) {
@@ -216,6 +227,17 @@ const initDB = async () => {
       console.error('Lỗi khi thêm cột qr_image vào bank_accounts:', err.message);
     }
 
+    // Migration: thêm cột qr_name vào bookings nếu chưa có
+    try {
+      const [qrNameBookingCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'qr_name'");
+      if (qrNameBookingCols.length === 0) {
+        await connection.query("ALTER TABLE bookings ADD COLUMN qr_name VARCHAR(255) NULL AFTER qr_id");
+        console.log('Đã thêm cột qr_name vào bảng bookings');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột qr_name vào bookings:', err.message);
+    }
+
     // Migration: thêm cột customer_bank_qr_image vào bookings nếu chưa có
     try {
       const [bqrCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'customer_bank_qr_image'");
@@ -248,6 +270,17 @@ const initDB = async () => {
       }
     } catch (err) {
       console.error('Lỗi khi thêm cột staff_paid_proof_urls vào bảng bookings:', err.message);
+    }
+
+    // Migration: thêm cột customer_id_card_urls vào bookings nếu chưa có
+    try {
+      const [idCardCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'customer_id_card_urls'");
+      if (idCardCols.length === 0) {
+        await connection.query("ALTER TABLE bookings ADD COLUMN customer_id_card_urls JSON NULL AFTER customer_paid_proof_urls");
+        console.log('Đã thêm cột customer_id_card_urls vào bảng bookings');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột customer_id_card_urls vào bookings:', err.message);
     }
 
     // Kiểm tra và thêm cột customer_paid_proof_urls vào bảng bookings

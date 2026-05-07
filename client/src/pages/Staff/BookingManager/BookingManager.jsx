@@ -21,6 +21,8 @@ const BookingManager = () => {
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [qrNameFilter, setQrNameFilter] = useState('');
+  const [qrList, setQrList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [processingFilter, setProcessingFilter] = useState('all');
   const [validFilter, setValidFilter] = useState('all');
@@ -41,6 +43,13 @@ const BookingManager = () => {
     bookingId: null,
     shortCode: ''
   });
+
+  useEffect(() => {
+    api.get('/qrs').then(res => {
+      const names = [...new Set((res.data || []).map(q => q.name).filter(Boolean))].sort();
+      setQrList(names);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -70,6 +79,7 @@ const BookingManager = () => {
             page: currentPage,
             limit: itemsPerPage,
             search: searchTerm.trim() || undefined,
+            qrName: qrNameFilter.trim() || undefined,
             dateRange: dateFilter === 'all' ? undefined : dateFilter
           } 
         });
@@ -86,7 +96,7 @@ const BookingManager = () => {
     };
     loadData();
     return () => { active = false; };
-  }, [statusFilter, processingFilter, validFilter, currentPage, searchTerm, dateFilter]);
+  }, [statusFilter, processingFilter, validFilter, currentPage, searchTerm, qrNameFilter, dateFilter]);
 
   const handleClaim = async (id) => {
     try {
@@ -234,6 +244,19 @@ const BookingManager = () => {
           </div>
 
           <select
+            value={qrNameFilter}
+            onChange={(e) => {
+              setQrNameFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">Tất cả tên QR</option>
+            {qrList.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+
+          <select
             value={processingFilter}
             onChange={(e) => {
               setProcessingFilter(e.target.value);
@@ -294,6 +317,7 @@ const BookingManager = () => {
             <tr>
               <th>ID</th>
               <th className="th-code">Mã đơn</th>
+              <th>Tên QR</th>
               <th>Khách hàng</th>
               <th className="th-money">Tiền chuyển</th>
               <th>Nhân viên xử lý</th>
@@ -306,13 +330,13 @@ const BookingManager = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   {renderSkeleton()}
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   <div className="empty-state">
                     <Search size={48} />
                     <p>Không có dữ liệu phù hợp.</p>
@@ -324,6 +348,7 @@ const BookingManager = () => {
                 <tr key={b.id}>
                   <td data-label="ID"><span>#{b.id}</span></td>
                   <td data-label="Mã đơn" className="th-code"><span className="mono">{shortCode(b.code)}</span></td>
+                  <td data-label="Tên QR">{b.qr_name || '—'}</td>
                   <td data-label="Khách hàng">
                     <div className="customer-cell">
                       <span className="name">{b.customer_name}</span>

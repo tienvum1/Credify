@@ -76,7 +76,7 @@ const createBooking = async (req, res) => {
     }
 
     const [qrRows] = await pool.query(
-      "SELECT id, status, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, qr_image, creator_id FROM qrs WHERE id = ? LIMIT 1",
+      "SELECT id, status, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, qr_image, name, creator_id FROM qrs WHERE id = ? LIMIT 1",
       [qr_id]
     );
     if (qrRows.length === 0)
@@ -119,15 +119,16 @@ const createBooking = async (req, res) => {
     const [result] = await pool.query(
       `
         INSERT INTO bookings (
-          code, qr_id, customer_id, staff_id, 
+          code, qr_id, qr_name, customer_id, staff_id, 
           customer_bank_name, customer_account_number, customer_account_holder, customer_bank_qr_image,
           admin_bank_name, admin_account_number, admin_account_holder, admin_bank_qr_image,
           transfer_amount, fee_rate, fee_amount, net_amount, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
       `,
       [
         code,
         qr_id,
+        qr.name || null,
         customer_id,
         null,
         String(customer_bank_name).trim(),
@@ -193,15 +194,19 @@ const submitCustomerPaid = async (req, res) => {
     const customer_id = req.user.id;
     const note = req.body?.note ?? null;
 
-    const files = req.files || [];
+    const files = req.files?.proof || [];
     if (files.length === 0)
       return res
         .status(400)
         .json({ message: "Vui lòng tải ít nhất một ảnh bill/chứng từ" });
 
     const proofUrls = files.map(file => file.path);
-    const mainProofUrl = proofUrls[0]; // Giữ lại ảnh đầu tiên cho cột cũ nếu cần
+    const mainProofUrl = proofUrls[0];
     const proofUrlsJson = JSON.stringify(proofUrls);
+
+    // Xử lý ảnh CCCD (tuỳ chọn)
+    const idCardFiles = req.files?.id_card || [];
+    const idCardUrlsJson = idCardFiles.length > 0 ? JSON.stringify(idCardFiles.map(f => f.path)) : null;
 
     const [existingRows] = await pool.query(
       "SELECT * FROM bookings WHERE id = ? LIMIT 1",
@@ -225,10 +230,10 @@ const submitCustomerPaid = async (req, res) => {
     await pool.query(
       `
         UPDATE bookings
-        SET customer_paid_proof_url = ?, customer_paid_proof_urls = ?, customer_paid_note = ?, status = 'customer_paid', paid_at = NOW()
+        SET customer_paid_proof_url = ?, customer_paid_proof_urls = ?, customer_id_card_urls = ?, customer_paid_note = ?, status = 'customer_paid', paid_at = NOW()
         WHERE id = ?
       `,
-      [mainProofUrl, proofUrlsJson, note ? String(note).trim() : null, bookingId]
+      [mainProofUrl, proofUrlsJson, idCardUrlsJson, note ? String(note).trim() : null, bookingId]
     );
 
     // Thông báo cho staff khi khách tải bill (Gửi không chặn để tránh timeout 502)
@@ -273,7 +278,7 @@ const submitCustomerPaid = async (req, res) => {
 
 const getMyBookings = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", status, dateRange = "all" } = req.query;
+    const { page = 1, limit = 10, search = "", status, dateRange = "all", qrName = "" } = req.query;
     const offset = (page - 1) * limit;
     const requestedCustomerId = Number(req.query.customer_id);
     let customer_id = req.user.id;
@@ -297,6 +302,11 @@ const getMyBookings = async (req, res) => {
     if (search) {
       baseWhereSql += " AND (b.code LIKE ?)";
       baseParams.push(`%${search}%`);
+    }
+
+    if (qrName) {
+      baseWhereSql += " AND b.qr_name LIKE ?";
+      baseParams.push(`%${qrName}%`);
     }
 
     if (dateRange !== "all") {
@@ -464,6 +474,19 @@ const getMyBookingDetail = async (req, res) => {
       booking.staff_proof_urls = [];
     }
 
+    // Parse JSON id card urls
+    if (booking.customer_id_card_urls) {
+      try {
+        booking.id_card_urls = typeof booking.customer_id_card_urls === 'string'
+          ? JSON.parse(booking.customer_id_card_urls)
+          : booking.customer_id_card_urls;
+      } catch (e) {
+        booking.id_card_urls = [];
+      }
+    } else {
+      booking.id_card_urls = [];
+    }
+
     res.json(enrichBooking(booking));
   } catch (err) {
     console.error("Lỗi khi lấy chi tiết đơn của user:", err);
@@ -593,7 +616,7 @@ const updateBookingValidity = async (req, res) => {
 
 const staffGetBookings = async (req, res) => {
   try {
-    const { status, processing_status, is_valid, page = 1, limit = 10, search = "", dateRange = "all" } = req.query;
+    const { status, processing_status, is_valid, page = 1, limit = 10, search = "", dateRange = "all", qrName = "" } = req.query;
     const offset = (page - 1) * limit;
     const params = [];
     let whereSql = "WHERE 1=1";
@@ -637,6 +660,11 @@ const staffGetBookings = async (req, res) => {
       whereSql += " AND (b.code LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)";
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    if (qrName) {
+      whereSql += " AND b.qr_name LIKE ?";
+      params.push(`%${qrName}%`);
     }
 
     if (dateRange !== "all") {
@@ -754,6 +782,19 @@ const staffGetBookingDetail = async (req, res) => {
       }
     } else {
       booking.staff_proof_urls = [];
+    }
+
+    // Parse JSON id card urls
+    if (booking.customer_id_card_urls) {
+      try {
+        booking.id_card_urls = typeof booking.customer_id_card_urls === 'string'
+          ? JSON.parse(booking.customer_id_card_urls)
+          : booking.customer_id_card_urls;
+      } catch (e) {
+        booking.id_card_urls = [];
+      }
+    } else {
+      booking.id_card_urls = [];
     }
 
     res.json(enrichBooking(booking));
@@ -990,7 +1031,23 @@ const accountantGetBookingDetail = async (req, res) => {
     );
 
     if (rows.length === 0) return res.status(404).json({ message: "Không tìm thấy đơn hoặc đơn không hợp lệ" });
-    res.json(enrichBooking(rows[0]));
+
+    const booking = rows[0];
+
+    // Parse JSON id card urls
+    if (booking.customer_id_card_urls) {
+      try {
+        booking.id_card_urls = typeof booking.customer_id_card_urls === 'string'
+          ? JSON.parse(booking.customer_id_card_urls)
+          : booking.customer_id_card_urls;
+      } catch (e) {
+        booking.id_card_urls = [];
+      }
+    } else {
+      booking.id_card_urls = [];
+    }
+
+    res.json(enrichBooking(booking));
   } catch (err) {
     console.error("Lỗi khi accountant lấy detail:", err);
     res.status(500).json({ message: "Lỗi server" });

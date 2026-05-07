@@ -15,6 +15,7 @@ const StaffQRManager = () => {
   // Form states
   const [mainImageFile, setMainImageFile] = useState(null);
   const [qrImageFile, setQrImageFile] = useState(null);
+  const [qrName, setQrName] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [feeRate, setFeeRate] = useState('');
   const [feeRateL1, setFeeRateL1] = useState('');
@@ -49,6 +50,7 @@ const StaffQRManager = () => {
   const resetForm = () => {
     setMainImageFile(null);
     setQrImageFile(null);
+    setQrName('');
     setMaxAmount('');
     setFeeRate('');
     setFeeRateL1('');
@@ -61,6 +63,7 @@ const StaffQRManager = () => {
 
   const handleEdit = (qr) => {
     setEditingQr(qr);
+    setQrName(qr.name || '');
     setMaxAmount(qr.max_amount_per_trans ? Math.round(qr.max_amount_per_trans).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
     setFeeRate(qr.fee_rate);
     setFeeRateL1(qr.fee_rate_l1 || '');
@@ -89,7 +92,7 @@ const StaffQRManager = () => {
     const formData = new FormData();
     if (mainImageFile) formData.append('main_image', mainImageFile);
     if (qrImageFile) formData.append('qr_image', qrImageFile);
-    
+    formData.append('name', qrName);
     // Xóa dấu chấm trước khi gửi lên server
     const cleanMaxAmount = maxAmount.replace(/\./g, '');
     formData.append('max_amount_per_trans', cleanMaxAmount);
@@ -184,6 +187,7 @@ const StaffQRManager = () => {
           <thead>
             <tr>
               <th className="th-stt">ID</th>
+              <th>Tên QR</th>
               <th className="th-img">Ảnh đại diện</th>
               <th className="th-img">Ảnh QR</th>
               <th className="th-money">Hạn mức</th>
@@ -211,6 +215,9 @@ const StaffQRManager = () => {
                   <tr key={qr.id}>
                     <td data-label="ID" className="td-stt">
                       #{qr.id}
+                    </td>
+                    <td data-label="Tên QR">
+                      <span style={{ fontWeight: 600 }}>{qr.name || '—'}</span>
                     </td>
                     <td data-label="Ảnh đại diện" className="td-img">
                       <div className="qr-cell">
@@ -298,6 +305,16 @@ const StaffQRManager = () => {
           <div className="modal-content">
             <h2>{editingQr ? 'Chỉnh sửa QR' : 'Thêm QR mới'}</h2>
             <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Tên QR:</label>
+                <input
+                  type="text"
+                  value={qrName}
+                  onChange={(e) => setQrName(e.target.value)}
+                  placeholder="Ví dụ: Thẻ Visa Vietcombank"
+                  required
+                />
+              </div>
               <div className="form-group">
                 <label>Ảnh đại diện (hiển thị ở Card ngoài):</label>
                 <input type="file" onChange={(e) => setMainImageFile(e.target.files[0])} required={!editingQr} />

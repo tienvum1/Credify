@@ -19,12 +19,11 @@ const deleteCloudinaryImage = async (url) => {
 const createQR = async (req, res) => {
   try {
     const { 
-      max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
+      name, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
       note, status 
     } = req.body;
     const creator_id = req.user.id;
     
-    // Khi dùng upload.fields, các file nằm trong req.files
     const main_image = req.files && req.files.main_image ? req.files.main_image[0].path : '';
     const qr_image = req.files && req.files.qr_image ? req.files.qr_image[0].path : '';
 
@@ -35,9 +34,9 @@ const createQR = async (req, res) => {
     const qrStatus = status || 'ready';
 
     const [result] = await pool.query(
-      'INSERT INTO qrs (main_image, qr_image, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, note, status, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO qrs (name, main_image, qr_image, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, note, status, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
-        main_image, qr_image, max_amount_per_trans, 
+        name || null, main_image, qr_image, max_amount_per_trans, 
         fee_rate || 0, fee_rate_l1 || 0, fee_rate_l2 || 0, fee_rate_l3 || 0, 
         note, qrStatus, creator_id
       ]
@@ -47,6 +46,7 @@ const createQR = async (req, res) => {
       message: 'Tạo QR thành công',
       qr: {
         id: result.insertId,
+        name: name || null,
         main_image,
         qr_image,
         max_amount_per_trans,
@@ -66,12 +66,11 @@ const createQR = async (req, res) => {
 const updateQR = async (req, res) => {
   try {
     const { 
-      max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
+      name, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, 
       note, status 
     } = req.body;
     const qrId = req.params.id;
 
-    // Kiểm tra QR tồn tại
     const [existing] = await pool.query('SELECT * FROM qrs WHERE id = ?', [qrId]);
     if (existing.length === 0) return res.status(404).json({ message: 'Không tìm thấy QR' });
 
@@ -80,17 +79,16 @@ const updateQR = async (req, res) => {
 
     if (req.files) {
       if (req.files.main_image) {
-        // Xóa ảnh cũ trước khi cập nhật ảnh mới
         await deleteCloudinaryImage(existing[0].main_image);
         main_image = req.files.main_image[0].path;
       }
       if (req.files.qr_image) {
-        // Xóa ảnh cũ trước khi cập nhật ảnh mới
         await deleteCloudinaryImage(existing[0].qr_image);
         qr_image = req.files.qr_image[0].path;
       }
     }
 
+    const updatedName = name !== undefined ? name : existing[0].name;
     const updatedMaxAmount = max_amount_per_trans ?? existing[0].max_amount_per_trans;
     const updatedFeeDefault = fee_rate ?? existing[0].fee_rate;
     const updatedFeeL1 = fee_rate_l1 ?? existing[0].fee_rate_l1;
@@ -100,9 +98,9 @@ const updateQR = async (req, res) => {
     const qrStatus = status || existing[0].status;
 
     await pool.query(
-      'UPDATE qrs SET main_image = ?, qr_image = ?, max_amount_per_trans = ?, fee_rate = ?, fee_rate_l1 = ?, fee_rate_l2 = ?, fee_rate_l3 = ?, note = ?, status = ? WHERE id = ?',
+      'UPDATE qrs SET name = ?, main_image = ?, qr_image = ?, max_amount_per_trans = ?, fee_rate = ?, fee_rate_l1 = ?, fee_rate_l2 = ?, fee_rate_l3 = ?, note = ?, status = ? WHERE id = ?',
       [
-        main_image, qr_image, updatedMaxAmount, 
+        updatedName, main_image, qr_image, updatedMaxAmount, 
         updatedFeeDefault, updatedFeeL1, updatedFeeL2, updatedFeeL3,
         updatedNote, qrStatus, qrId
       ]

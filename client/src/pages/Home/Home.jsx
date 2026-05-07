@@ -68,6 +68,7 @@ const Home = () => {
                   </div>
                   <div className="qr-details">
                     <div className="qr-header">
+                      {qr.name && <h3 className="qr-name">{qr.name}</h3>}
                       <span className="qr-fee">
                         Phí: {userFee}% 
                       </span>

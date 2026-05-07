@@ -84,7 +84,7 @@ const AccountantBookingDetail = () => {
   };
 
   const formatMoney = (amount) =>
-    Number(amount || 0).toLocaleString('vi-VN') + 'đ';
+    Math.round(Number(amount || 0)).toLocaleString('vi-VN') + 'đ';
 
   const handleUpdateValidity = async (value) => {
     if (booking.is_valid !== null) return;
@@ -209,6 +209,31 @@ const AccountantBookingDetail = () => {
               )}
             </div>
           </div>
+
+          {/* CCCD khách */}
+          {booking.id_card_urls && booking.id_card_urls.length > 0 && (
+            <div className="acc-card">
+              <div className="acc-card-header">
+                <Shield size={18} />
+                <span>Ảnh CCCD / Căn cước khách</span>
+              </div>
+              <div className="acc-card-body">
+                <div className="proofs-grid">
+                  {booking.id_card_urls.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="proof-thumb"
+                      onClick={() => setLightbox(url)}
+                      title="Nhấn để phóng to"
+                    >
+                      <img src={url} alt={`CCCD ${idx + 1}`} />
+                      <div className="proof-zoom"><ZoomIn size={14} /></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── RIGHT COLUMN ── */}

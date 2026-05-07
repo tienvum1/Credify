@@ -9,6 +9,8 @@ const MyBookings = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [qrNameFilter, setQrNameFilter] = useState('');
+  const [qrList, setQrList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -23,6 +25,13 @@ const MyBookings = () => {
   ];
 
   useEffect(() => {
+    api.get('/qrs').then(res => {
+      const names = [...new Set((res.data || []).map(q => q.name).filter(Boolean))].sort();
+      setQrList(names);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
     const loadData = async () => {
@@ -33,6 +42,7 @@ const MyBookings = () => {
             page: currentPage,
             limit: itemsPerPage,
             search: searchTerm.trim() || undefined,
+            qrName: qrNameFilter.trim() || undefined,
             status: statusFilter === 'all' ? undefined : statusFilter,
             dateRange: dateFilter === 'all' ? undefined : dateFilter
           }
@@ -55,7 +65,7 @@ const MyBookings = () => {
     return () => {
       active = false;
     };
-  }, [currentPage, searchTerm, statusFilter, dateFilter]);
+  }, [currentPage, searchTerm, qrNameFilter, statusFilter, dateFilter]);
 
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
@@ -153,6 +163,19 @@ const MyBookings = () => {
 
           <div className="filters-group">
             <select
+              value={qrNameFilter}
+              onChange={(e) => {
+                setQrNameFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              <option value="">Tất cả tên QR</option>
+              {qrList.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+
+            <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -221,6 +244,8 @@ const MyBookings = () => {
             <tr>
               <th>ID</th>
               <th>Mã đơn</th>
+              <th>Tên QR</th>
+              <th>Ngân hàng</th>
               <th>Thời gian</th>
               <th>Số tiền</th>
               <th>Phí</th>
@@ -232,17 +257,19 @@ const MyBookings = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={10}>
                   {renderSkeleton()}
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
-              <tr><td colSpan={8} className="empty">Không tìm thấy đơn hàng nào.</td></tr>
+              <tr><td colSpan={10} className="empty">Không tìm thấy đơn hàng nào.</td></tr>
             ) : (
               bookings.map((b) => (
                 <tr key={b.id}>
                   <td data-label="ID">#{b.id}</td>
                   <td data-label="Mã đơn"><strong>{shortCode(b.code)}</strong></td>
+                  <td data-label="Tên QR">{b.qr_name || '—'}</td>
+                  <td data-label="Ngân hàng">{b.customer_bank_name || '—'}</td>
                   <td data-label="Thời gian">{formatDateTime(b.created_at)}</td>
                   <td data-label="Số tiền">{formatMoney(b.transfer_amount)}</td>
                   <td data-label="Phí">{formatMoney(b.fee_amount)}</td>

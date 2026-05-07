@@ -193,6 +193,7 @@ const QRDetail = () => {
             <img src={qr.qr_image} alt={`QR ${qr.id}`} />
           </div>
           <div className="qr-meta">
+            {qr.name && <div className="qr-name-label">{qr.name}</div>}
             <div className="qr-meta-row">
               <span className="label">Số tiền tối đa 1 lần chuyển</span>
               <span className="value">{formatMoney(qr.max_amount_per_trans)}</span>

@@ -237,6 +237,7 @@ const AdminBookingDetail = () => {
           <tr><th>ID đơn</th><td data-label="ID đơn">{booking.id}</td></tr>
           <tr><th>Mã đơn</th><td data-label="Mã đơn" className="mono">{shortCode(booking.code)}</td></tr>
           <tr><th>ID QR</th><td data-label="ID QR">{booking.qr_id}</td></tr>
+          <tr><th>Tên QR</th><td data-label="Tên QR">{booking.qr_name || '—'}</td></tr>
           <tr><th>ID khách hàng</th><td data-label="ID khách hàng">{booking.customer_id}</td></tr>
           <tr>
             <th>Nhân viên xử lý</th>
@@ -336,6 +337,21 @@ const AdminBookingDetail = () => {
                     </div>
                   ))
                 }
+                </div>
+              </td>
+            </tr>
+          )}
+          {booking.id_card_urls && booking.id_card_urls.length > 0 && (
+            <tr>
+              <th>Ảnh CCCD khách</th>
+              <td data-label="Ảnh CCCD khách">
+                <div className="proof-images-grid">
+                  {booking.id_card_urls.map((url, idx) => (
+                    <div key={idx} className="proof-thumb-wrapper" onClick={() => setPreviewImageUrl(url)}>
+                      <img src={url} alt={`CCCD ${idx + 1}`} className="proof-thumb" />
+                      <span className="thumb-label">CCCD {idx + 1}</span>
+                    </div>
+                  ))}
                 </div>
               </td>
             </tr>
