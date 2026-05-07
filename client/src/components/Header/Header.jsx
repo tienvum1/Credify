@@ -26,9 +26,17 @@ const Header = ({ user, handleLogout }) => {
           </Link>
           
           <nav className={`header-nav ${isMenuOpen ? 'mobile-open' : ''}`}>
-            <Link to="/" className="nav-item" onClick={() => setIsMenuOpen(false)}>Trang chủ</Link>
-            <Link to="/services" className="nav-item" onClick={() => setIsMenuOpen(false)}>Dịch vụ</Link>
-            <Link to="/about" className="nav-item" onClick={() => setIsMenuOpen(false)}>Giới thiệu</Link>
+            {user?.role === 'accountant' ? (
+              <Link to="/accountant/bookings" className="nav-item" onClick={() => setIsMenuOpen(false)}>
+                Quản lý thanh toán
+              </Link>
+            ) : (
+              <>
+                <Link to="/" className="nav-item" onClick={() => setIsMenuOpen(false)}>Trang chủ</Link>
+                <Link to="/services" className="nav-item" onClick={() => setIsMenuOpen(false)}>Dịch vụ</Link>
+                <Link to="/about" className="nav-item" onClick={() => setIsMenuOpen(false)}>Giới thiệu</Link>
+              </>
+            )}
           </nav>
         </div>
 
@@ -80,11 +88,7 @@ const Header = ({ user, handleLogout }) => {
                       </Link>
                     </>
                   )}
-                  {user?.role === 'accountant' && (
-                    <Link to="/accountant/bookings" className="dropdown-item">
-                      <ShoppingCart size={16} /> Quản lý đơn hàng
-                    </Link>
-                  )}
+
                   <Link to="/settings" className="dropdown-item">
                     <Settings size={16} /> Cài đặt
                   </Link>
