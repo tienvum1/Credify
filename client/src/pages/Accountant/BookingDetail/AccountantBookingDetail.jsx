@@ -26,7 +26,7 @@ const AccountantBookingDetail = () => {
         const res = await api.get(`/bookings/accountant/${id}`);
         const data = res.data;
 
-        // Parse JSON proof urls
+        // Parse JSON proof urls (accountant bill)
         if (data.accountant_paid_proof_urls) {
           try {
             data.proof_urls = typeof data.accountant_paid_proof_urls === 'string'
@@ -37,6 +37,19 @@ const AccountantBookingDetail = () => {
           }
         } else {
           data.proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
+        }
+
+        // Parse JSON customer proof urls
+        if (data.customer_paid_proof_urls) {
+          try {
+            data.customer_proof_urls = typeof data.customer_paid_proof_urls === 'string'
+              ? JSON.parse(data.customer_paid_proof_urls)
+              : data.customer_paid_proof_urls;
+          } catch {
+            data.customer_proof_urls = data.customer_paid_proof_url ? [data.customer_paid_proof_url] : [];
+          }
+        } else {
+          data.customer_proof_urls = data.customer_paid_proof_url ? [data.customer_paid_proof_url] : [];
         }
 
         setBooking(data);
@@ -165,6 +178,10 @@ const AccountantBookingDetail = () => {
               {/* Bank details */}
               <div className="admin-bank-details">
                 <div className="bank-detail-row">
+                  <span className="bdl">Tên QR</span>
+                  <span className="bdv">{booking.qr_name || '—'}</span>
+                </div>
+                <div className="bank-detail-row">
                   <span className="bdl">Ngân hàng</span>
                   <span className="bdv">{booking.admin_bank_name || '—'}</span>
                 </div>
@@ -191,24 +208,58 @@ const AccountantBookingDetail = () => {
               <span>Hóa đơn khách đã chuyển</span>
             </div>
             <div className="acc-card-body">
-              {booking.customer_paid_proof_url ? (
-                <div
-                  className="customer-proof-wrap"
-                  onClick={() => setLightbox(booking.customer_paid_proof_url)}
-                  title="Nhấn để phóng to"
-                >
-                  <img
-                    src={booking.customer_paid_proof_url}
-                    alt="Bill của khách"
-                    className="customer-proof-img"
-                  />
-                  <div className="proof-zoom-hint"><ZoomIn size={16} /></div>
+              {booking.customer_proof_urls && booking.customer_proof_urls.length > 0 ? (
+                <div className="proofs-grid">
+                  {booking.customer_proof_urls.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="proof-thumb"
+                      onClick={() => setLightbox(url)}
+                      title="Nhấn để phóng to"
+                    >
+                      <img src={url} alt={`Bill khách ${idx + 1}`} />
+                      <div className="proof-zoom"><ZoomIn size={14} /></div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="no-proof-text">Chưa có hóa đơn</p>
               )}
             </div>
           </div>
+
+          {/* Accountant bill (hiển thị khi đã hoàn tất) */}
+          {booking.proof_urls && booking.proof_urls.length > 0 && (
+            <div className="acc-card">
+              <div className="acc-card-header success">
+                <Upload size={18} />
+                <span>Hóa đơn hệ thống đã chuyển lại cho khách</span>
+              </div>
+              <div className="acc-card-body">
+                <p className="completed-time">
+                  Chuyển lúc:{' '}
+                  <strong>
+                    {booking.accountant_paid_at
+                      ? new Date(booking.accountant_paid_at).toLocaleString('vi-VN')
+                      : '—'}
+                  </strong>
+                </p>
+                <div className="proofs-grid">
+                  {booking.proof_urls.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="proof-thumb"
+                      onClick={() => setLightbox(url)}
+                      title="Nhấn để phóng to"
+                    >
+                      <img src={url} alt={`Biên lai kế toán ${idx + 1}`} />
+                      <div className="proof-zoom"><ZoomIn size={14} /></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* CCCD khách */}
           {booking.id_card_urls && booking.id_card_urls.length > 0 && (
@@ -348,24 +399,6 @@ const AccountantBookingDetail = () => {
                       : '—'}
                   </strong>
                 </p>
-
-                {booking.proof_urls && booking.proof_urls.length > 0 && (
-                  <div className="completed-proofs">
-                    <p className="proofs-label">Biên lai đã tải:</p>
-                    <div className="proofs-grid">
-                      {booking.proof_urls.map((url, idx) => (
-                        <div
-                          key={idx}
-                          className="proof-thumb"
-                          onClick={() => setLightbox(url)}
-                        >
-                          <img src={url} alt={`Biên lai ${idx + 1}`} />
-                          <div className="proof-zoom"><ZoomIn size={14} /></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}

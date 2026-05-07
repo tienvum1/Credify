@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { createQR, updateQR, deleteQR, getAllQRs, getQRById, getReadyQRs, getReadyQRById, updateQRStatus } = require('../controllers/qrController');
+const { createQR, updateQR, deleteQR, getAllQRs, getQRById, getReadyQRs, getReadyQRById, updateQRStatus, toggleAccountantEditable, accountantUpdateQR } = require('../controllers/qrController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
 
@@ -16,9 +16,11 @@ const qrUpload = upload.fields([
 ]);
 
 // Routes
-router.get('/ready', getReadyQRs); // Route công khai để lấy QR sẵn sàng cho trang Home
+router.get('/ready', getReadyQRs);
 router.get('/ready/:id', getReadyQRById);
 router.patch('/:id/status', protect, authorize('staff', 'admin_system'), updateQRStatus);
+router.patch('/:id/accountant-editable', protect, authorize('staff', 'admin_system'), toggleAccountantEditable);
+router.put('/:id/accountant', protect, authorize('accountant'), qrUpload, accountantUpdateQR);
 router.post('/', protect, authorize('staff', 'admin_system'), qrUpload, createQR);
 router.put('/:id', protect, authorize('staff', 'admin_system'), qrUpload, updateQR);
 router.delete('/:id', protect, authorize('staff', 'admin_system'), deleteQR);

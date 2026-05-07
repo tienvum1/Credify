@@ -272,6 +272,17 @@ const initDB = async () => {
       console.error('Lỗi khi thêm cột staff_paid_proof_urls vào bảng bookings:', err.message);
     }
 
+    // Migration: thêm cột accountant_editable vào bảng qrs nếu chưa có
+    try {
+      const [accEditCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'accountant_editable'");
+      if (accEditCols.length === 0) {
+        await connection.query("ALTER TABLE qrs ADD COLUMN accountant_editable TINYINT(1) DEFAULT 0 AFTER status");
+        console.log('Đã thêm cột accountant_editable vào bảng qrs');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột accountant_editable vào qrs:', err.message);
+    }
+
     // Migration: thêm cột customer_id_card_urls vào bookings nếu chưa có
     try {
       const [idCardCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'customer_id_card_urls'");

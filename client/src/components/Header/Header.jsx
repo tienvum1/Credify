@@ -27,9 +27,14 @@ const Header = ({ user, handleLogout }) => {
           
           <nav className={`header-nav ${isMenuOpen ? 'mobile-open' : ''}`}>
             {user?.role === 'accountant' ? (
-              <Link to="/accountant/bookings" className="nav-item" onClick={() => setIsMenuOpen(false)}>
-                Quản lý thanh toán
-              </Link>
+              <>
+                <Link to="/accountant/bookings" className="nav-item" onClick={() => setIsMenuOpen(false)}>
+                  Quản lý thanh toán
+                </Link>
+                <Link to="/accountant/qrs" className="nav-item" onClick={() => setIsMenuOpen(false)}>
+                  Quản lý QR
+                </Link>
+              </>
             ) : (
               <>
                 <Link to="/" className="nav-item" onClick={() => setIsMenuOpen(false)}>Trang chủ</Link>

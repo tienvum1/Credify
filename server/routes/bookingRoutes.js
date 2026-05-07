@@ -34,7 +34,7 @@ router.post(
   "/:id/customer-paid",
   protect,
   upload.fields([
-    { name: 'proof', maxCount: 3 },
+    { name: 'proof', maxCount: 10 },
     { name: 'id_card', maxCount: 2 }
   ]),
   submitCustomerPaid

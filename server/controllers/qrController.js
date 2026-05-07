@@ -172,6 +172,69 @@ const updateQRStatus = async (req, res) => {
   }
 };
 
+// Toggle quyền sửa QR cho accountant (chỉ admin/staff)
+const toggleAccountantEditable = async (req, res) => {
+  try {
+    const qrId = req.params.id;
+    const [existing] = await pool.query('SELECT id, accountant_editable FROM qrs WHERE id = ?', [qrId]);
+    if (existing.length === 0) return res.status(404).json({ message: 'Không tìm thấy QR' });
+
+    const newValue = existing[0].accountant_editable ? 0 : 1;
+    await pool.query('UPDATE qrs SET accountant_editable = ? WHERE id = ?', [newValue, qrId]);
+    res.json({ message: newValue ? 'Đã bật quyền sửa cho kế toán' : 'Đã tắt quyền sửa cho kế toán', accountant_editable: newValue });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Accountant cập nhật QR (chỉ khi accountant_editable = 1)
+const accountantUpdateQR = async (req, res) => {
+  try {
+    const qrId = req.params.id;
+    const { name, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, note } = req.body;
+
+    const [existing] = await pool.query('SELECT * FROM qrs WHERE id = ?', [qrId]);
+    if (existing.length === 0) return res.status(404).json({ message: 'Không tìm thấy QR' });
+
+    if (!existing[0].accountant_editable) {
+      return res.status(403).json({ message: 'QR này không cho phép kế toán chỉnh sửa' });
+    }
+
+    let main_image = existing[0].main_image;
+    let qr_image = existing[0].qr_image;
+
+    if (req.files) {
+      if (req.files.main_image) {
+        await deleteCloudinaryImage(existing[0].main_image);
+        main_image = req.files.main_image[0].path;
+      }
+      if (req.files.qr_image) {
+        await deleteCloudinaryImage(existing[0].qr_image);
+        qr_image = req.files.qr_image[0].path;
+      }
+    }
+
+    const updatedName = name !== undefined ? name : existing[0].name;
+    const updatedMaxAmount = max_amount_per_trans ?? existing[0].max_amount_per_trans;
+    const updatedFeeDefault = fee_rate ?? existing[0].fee_rate;
+    const updatedFeeL1 = fee_rate_l1 ?? existing[0].fee_rate_l1;
+    const updatedFeeL2 = fee_rate_l2 ?? existing[0].fee_rate_l2;
+    const updatedFeeL3 = fee_rate_l3 ?? existing[0].fee_rate_l3;
+    const updatedNote = note ?? existing[0].note;
+
+    await pool.query(
+      'UPDATE qrs SET name = ?, main_image = ?, qr_image = ?, max_amount_per_trans = ?, fee_rate = ?, fee_rate_l1 = ?, fee_rate_l2 = ?, fee_rate_l3 = ?, note = ? WHERE id = ?',
+      [updatedName, main_image, qr_image, updatedMaxAmount, updatedFeeDefault, updatedFeeL1, updatedFeeL2, updatedFeeL3, updatedNote, qrId]
+    );
+
+    res.json({ message: 'Cập nhật QR thành công' });
+  } catch (err) {
+    console.error('Lỗi khi accountant cập nhật QR:', err);
+    res.status(500).json({ message: 'Lỗi server: ' + err.message });
+  }
+};
+
 // Xóa QR
 const deleteQR = async (req, res) => {
   try {
@@ -232,6 +295,8 @@ module.exports = {
   getReadyQRs,
   getReadyQRById,
   updateQRStatus,
+  toggleAccountantEditable,
+  accountantUpdateQR,
   deleteQR,
   getAllQRs,
   getQRById

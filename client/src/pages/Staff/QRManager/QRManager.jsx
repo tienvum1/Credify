@@ -9,6 +9,7 @@ const StaffQRManager = () => {
   const [editingQr, setEditingQr] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState(null);
+  const [togglingEditId, setTogglingEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   
@@ -150,6 +151,18 @@ const StaffQRManager = () => {
     }
   };
 
+  const handleToggleAccountantEditable = async (qr) => {
+    setTogglingEditId(qr.id);
+    try {
+      await api.patch(`/qrs/${qr.id}/accountant-editable`);
+      await refreshQRs();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTogglingEditId(null);
+    }
+  };
+
   const filteredQrs = qrs.filter((qr) => {
     return statusFilter === 'all' ? true : qr.status === statusFilter;
   });
@@ -198,6 +211,7 @@ const StaffQRManager = () => {
               <th className="th-date">Ngày tạo</th>
               <th className="th-date">Ngày cập nhật</th>
               <th className="th-status">Trạng thái QR</th>
+              <th className="th-status">Kế toán sửa</th>
               <th className="th-actions">Thao tác</th>
             </tr>
           </thead>
@@ -269,6 +283,17 @@ const StaffQRManager = () => {
                         title="Bấm để đổi trạng thái"
                       >
                         {statusText}
+                      </button>
+                    </td>
+                    <td data-label="Kế toán sửa" className="td-status">
+                      <button
+                        type="button"
+                        className={`status-toggle-btn ${qr.accountant_editable ? 'active' : 'inactive'}`}
+                        onClick={() => handleToggleAccountantEditable(qr)}
+                        disabled={togglingEditId === qr.id}
+                        title="Bật/tắt quyền sửa cho kế toán"
+                      >
+                        {togglingEditId === qr.id ? '...' : qr.accountant_editable ? '✓ Bật' : '✗ Tắt'}
                       </button>
                     </td>
                     <td data-label="Thao tác" className="td-actions">

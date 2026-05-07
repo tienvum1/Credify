@@ -109,8 +109,8 @@ const BookingPayment = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Giới hạn tối đa 3 hình
-    const newFiles = [...proofFiles, ...files].slice(0, 3);
+    // Giới hạn tối đa 10 hình
+    const newFiles = [...proofFiles, ...files].slice(0, 10);
     setProofFiles(newFiles);
 
     const newPreviews = [];
@@ -267,7 +267,7 @@ const BookingPayment = () => {
           
           <div className="upload-form">
             <div className="field">
-              <span>Ảnh bill/chứng từ (tối đa 3 ảnh)</span>
+              <span>Ảnh bill/chứng từ (tối đa 10 ảnh)</span>
               <div className="proof-previews-grid">
                 {proofPreviews.map((preview, index) => (
                   <div key={index} className="proof-preview-container">

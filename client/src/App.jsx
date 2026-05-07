@@ -17,6 +17,7 @@ import AdminBookingManager from './pages/Admin/BookingManager/AdminBookingManage
 import AdminBookingDetail from './pages/Admin/BookingDetail/AdminBookingDetail';
 import AccountantBookingManager from './pages/Accountant/BookingManager/AccountantBookingManager';
 import AccountantBookingDetail from './pages/Accountant/BookingDetail/AccountantBookingDetail';
+import AccountantQRManager from './pages/Accountant/QRManager/AccountantQRManager';
 import AdminLayout from './components/AdminLayout/AdminLayout';
 import MyBookings from './pages/MyBookings/MyBookings';
 import MyBookingDetail from './pages/MyBookings/MyBookingDetail';
@@ -207,6 +208,14 @@ function App() {
           element={
             <ProtectedRoute user={user} allowedRoles={['accountant', 'admin_system']}>
               <AccountantBookingDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/qrs"
+          element={
+            <ProtectedRoute user={user} allowedRoles={['accountant']}>
+              <AccountantQRManager />
             </ProtectedRoute>
           }
         />
