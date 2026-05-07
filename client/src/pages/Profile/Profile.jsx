@@ -32,6 +32,7 @@ const Profile = () => {
   });
   const [bankQrFile, setBankQrFile] = useState(null);
   const [bankQrPreview, setBankQrPreview] = useState(null);
+  const [qrLightbox, setQrLightbox] = useState(null);
 
   const navigate = useNavigate();
 
@@ -368,59 +369,126 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Mục Quản lý ngân hàng - Tách biệt hoàn toàn */}
-        <div className="profile-section-header">
-          <BankIcon size={24} />
-          <h2>Quản lý tài khoản ngân hàng</h2>
-          <button className="add-bank-btn" onClick={() => handleOpenBankModal()}>
-            <Plus size={16} />
-            <span>Thêm tài khoản mới</span>
-          </button>
-        </div>
+        {/* ── Quản lý tài khoản ngân hàng ── */}
+        <div className="bank-section">
+          <div className="bank-section-header">
+            <div className="bank-section-title">
+              <BankIcon size={20} />
+              <h2>Quản lý tài khoản ngân hàng</h2>
+              {bankAccounts.length > 0 && (
+                <span className="bank-count">{bankAccounts.length}</span>
+              )}
+            </div>
+            <button className="add-bank-btn" onClick={() => handleOpenBankModal()}>
+              <Plus size={15} />
+              Thêm tài khoản
+            </button>
+          </div>
 
-        <div className="bank-accounts-container">
-          {bankAccounts.length === 0 ? (
-            <div className="content-card empty-banks-card">
-              <div className="empty-banks">
-                <BankIcon size={48} />
-                <p>Bạn chưa có tài khoản ngân hàng lưu trữ</p>
-                <span>Thêm tài khoản để thực hiện các giao dịch thanh toán nhanh hơn</span>
+          <div className="bank-table-wrap content-card">
+            {bankAccounts.length === 0 ? (
+              <div className="bank-empty">
+                <BankIcon size={40} />
+                <p>Chưa có tài khoản ngân hàng nào</p>
+                <span>Thêm tài khoản để thanh toán nhanh hơn</span>
+                <button className="add-bank-btn-empty" onClick={() => handleOpenBankModal()}>
+                  <Plus size={15} /> Thêm ngay
+                </button>
               </div>
-            </div>
-          ) : (
-            <div className="bank-list">
-              {bankAccounts.map((bank) => (
-                <div key={bank.id} className={`bank-item ${bank.is_default ? 'default' : ''}`}>
-                  {bank.qr_image && (
-                    <div className="bank-qr-thumb">
-                      <img src={bank.qr_image} alt={`QR ${bank.bank_name}`} />
-                    </div>
-                  )}
-                  <div className="bank-info">
-                    <div className="bank-name-group">
-                      <span className="bank-name">{bank.bank_name}</span>
-                      {bank.is_default && <span className="default-badge">Mặc định</span>}
-                    </div>
-                    <div className="account-number">{bank.account_number}</div>
-                    <div className="account-holder">{bank.account_holder}</div>
-                  </div>
-                  <div className="bank-actions">
-                    <button className="set-default-btn" title="Đặt làm mặc định" onClick={() => !bank.is_default && handleSaveBank({ preventDefault: () => {}, target: {}}, bank, { is_default: true })}>
-                      <Star size={16} fill={bank.is_default ? "currentColor" : "none"} />
-                    </button>
-                    <button className="edit-bank-btn" onClick={() => handleOpenBankModal(bank)}>
-                      <Edit3 size={16} />
-                    </button>
-                    <button className="delete-bank-btn" onClick={() => handleDeleteBank(bank.id)}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            ) : (
+              <div className="bank-table-shell">
+                <table className="bank-table">
+                  <thead>
+                    <tr>
+                      <th>Chủ tài khoản</th>
+                      <th>Ngân hàng</th>
+                      <th>Số tài khoản</th>
+                      <th className="th-qr">Ảnh QR</th>
+                      <th className="th-actions">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...bankAccounts].sort((a, b) => b.is_default - a.is_default).map((bank) => (
+                      <tr key={bank.id} className={bank.is_default ? 'row-default' : ''}>
+                        <td data-label="Chủ tài khoản">
+                          <div className="holder-cell">
+                            <span className="holder-name">{bank.account_holder}</span>
+                            {bank.is_default && (
+                              <span className="default-pill">
+                                <Star size={10} fill="currentColor" /> Mặc định
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td data-label="Ngân hàng">
+                          <span className="bank-name-cell">{bank.bank_name}</span>
+                        </td>
+                        <td data-label="Số tài khoản">
+                          <span className="account-number-cell">{bank.account_number}</span>
+                        </td>
+                        <td data-label="Ảnh QR" className="td-qr">
+                          {bank.qr_image ? (
+                            <button
+                              type="button"
+                              className="qr-thumb-btn"
+                              onClick={() => setQrLightbox(bank.qr_image)}
+                              title="Xem QR"
+                            >
+                              <img src={bank.qr_image} alt={`QR ${bank.bank_name}`} className="qr-thumb-img" />
+                            </button>
+                          ) : (
+                            <span className="no-qr">—</span>
+                          )}
+                        </td>
+                        <td data-label="Hành động" className="td-actions">
+                          <div className="bank-row-actions">
+                            <button
+                              className={`action-btn default-btn ${bank.is_default ? 'is-default' : ''}`}
+                              title={bank.is_default ? 'Đang là mặc định' : 'Đặt làm mặc định'}
+                              onClick={() => !bank.is_default && handleSaveBank({ preventDefault: () => {} }, bank, { is_default: true })}
+                              disabled={bank.is_default}
+                            >
+                              <Star size={13} fill={bank.is_default ? 'currentColor' : 'none'} />
+                              <span>{bank.is_default ? 'Mặc định' : 'Mặc định'}</span>
+                            </button>
+                            <button
+                              className="action-btn edit-btn"
+                              title="Chỉnh sửa"
+                              onClick={() => handleOpenBankModal(bank)}
+                            >
+                              <Edit3 size={13} />
+                              <span>Sửa</span>
+                            </button>
+                            <button
+                              className="action-btn delete-btn"
+                              title="Xóa"
+                              onClick={() => handleDeleteBank(bank.id)}
+                            >
+                              <Trash2 size={13} />
+                              <span>Xóa</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {qrLightbox && (
+        <div className="bank-modal-overlay" onClick={() => setQrLightbox(null)}>
+          <div className="qr-lightbox-inner" onClick={e => e.stopPropagation()}>
+            <button className="qr-lightbox-close" onClick={() => setQrLightbox(null)}>
+              <X size={18} />
+            </button>
+            <img src={qrLightbox} alt="QR preview" />
+          </div>
+        </div>
+      )}
 
       {showBankModal && (
         <div className="bank-modal-overlay">
