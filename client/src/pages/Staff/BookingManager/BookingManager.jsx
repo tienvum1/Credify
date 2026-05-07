@@ -197,7 +197,7 @@ const BookingManager = () => {
         <div className="stat-card pending">
           <div className="stat-icon"><UserPlus size={24} /></div>
           <div className="stat-info">
-            <span className="stat-label">Chưa có ai nhận</span>
+            <span className="stat-label">Mới tạo</span>
             <span className="stat-value">{stats.pending_claim}</span>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import { 
-  Search, Eye, CheckCircle, Clock, 
+  Search, Eye, CheckCircle, Clock, XCircle,
   AlertCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -88,16 +88,16 @@ const AccountantBookingManager = () => {
     return Number(amount).toLocaleString('vi-VN') + 'đ';
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'staff_confirmed':
+  const getStatusBadge = (booking) => {
+    switch (booking.accountant_status) {
+      case 'pending':
         return <span className="badge-warning"><Clock size={12} /> Chờ chuyển tiền</span>;
-      case 'customer_paid':
-        return <span className="badge-warning"><CheckCircle size={12} /> Chờ chuyển tiền</span>;
-      case 'accountant_paid':
+      case 'paid':
         return <span className="badge-success"><CheckCircle size={12} /> Đã chuyển tiền</span>;
+      case 'rejected':
+        return <span className="badge-danger"><XCircle size={12} /> Từ chối chuyển tiền</span>;
       default:
-        return <span className="badge-default">{status}</span>;
+        return <span className="badge-default"><Clock size={12} /> Chờ xác nhận</span>;
     }
   };
 
@@ -122,8 +122,9 @@ const AccountantBookingManager = () => {
           
           <select value={statusFilter} onChange={handleStatusChange}>
             <option value="">Tất cả trạng thái</option>
-            <option value="staff_confirmed">Chờ thanh toán</option>
-            <option value="accountant_paid">Đã hoàn thành</option>
+            <option value="pending">Chờ chuyển tiền</option>
+            <option value="paid">Đã chuyển tiền</option>
+            <option value="rejected">Từ chối chuyển tiền</option>
           </select>
 
           <select value={dateRange} onChange={handleDateRangeChange}>
@@ -211,7 +212,7 @@ const AccountantBookingManager = () => {
                           </div>
                         </td>
                         <td>{new Date(b.created_at).toLocaleString('vi-VN')}</td>
-                        <td>{getStatusBadge(b.status)}</td>
+                        <td>{getStatusBadge(b)}</td>
                         <td>
                           {b.is_valid === 'yes' ? (
                             <span className="valid-badge yes">✓ Hợp lệ</span>
@@ -245,7 +246,7 @@ const AccountantBookingManager = () => {
                   <div key={b.id} className="booking-mobile-card">
                     <div className="card-top">
                       <span className="code">#{b.code.slice(-8).toUpperCase()}</span>
-                      {getStatusBadge(b.status)}
+                      {getStatusBadge(b)}
                     </div>
                     <div className="card-row">
                       <span className="label">Số tiền:</span>

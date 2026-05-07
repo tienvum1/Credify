@@ -229,7 +229,7 @@ const submitCustomerPaid = async (req, res) => {
     await pool.query(
       `
         UPDATE bookings
-        SET customer_paid_proof_url = ?, customer_paid_proof_urls = ?, customer_id_card_urls = ?, customer_paid_note = ?, status = 'customer_paid', paid_at = NOW()
+        SET customer_paid_proof_url = ?, customer_paid_proof_urls = ?, customer_id_card_urls = ?, customer_paid_note = ?, status = 'customer_paid', accountant_status = 'pending', paid_at = NOW()
         WHERE id = ?
       `,
       [mainProofUrl, proofUrlsJson, idCardUrlsJson, note ? String(note).trim() : null, bookingId]
@@ -531,8 +531,8 @@ const getStaffStats = async (req, res) => {
 
     if (status && status !== "all") {
       if (status === "staff_confirmed") {
-        whereSql += " AND b.status IN (?, ?)";
-        params.push("staff_confirmed", "completed");
+        whereSql += " AND b.status IN (?, ?, ?)";
+        params.push("staff_confirmed", "completed", "accountant_paid");
       } else {
         whereSql += " AND b.status = ?";
         params.push(status);
@@ -543,6 +543,16 @@ const getStaffStats = async (req, res) => {
       if (is_valid === "yes") whereSql += " AND b.is_valid = 'yes'";
       else if (is_valid === "no") whereSql += " AND b.is_valid = 'no'";
       else if (is_valid === "null") whereSql += " AND b.is_valid IS NULL";
+    }
+
+    const accountant_status = req.query.accountant_status;
+    if (accountant_status && accountant_status !== "all") {
+      if (accountant_status === "null") {
+        whereSql += " AND b.accountant_status IS NULL";
+      } else {
+        whereSql += " AND b.accountant_status = ?";
+        params.push(accountant_status);
+      }
     }
 
     if (processing_status && processing_status !== "all") {
@@ -649,6 +659,22 @@ const updateBookingValidity = async (req, res) => {
       [is_valid, id]
     );
 
+    // Bấm CÓ → accountant_status = 'pending'
+    if (is_valid === 'yes') {
+      await pool.query(
+        "UPDATE bookings SET accountant_status = 'pending' WHERE id = ? AND accountant_status IS NULL",
+        [id]
+      );
+    }
+
+    // Bấm KHÔNG → accountant_status = 'rejected'
+    if (is_valid === 'no') {
+      await pool.query(
+        "UPDATE bookings SET accountant_status = 'rejected' WHERE id = ? AND accountant_status = 'pending'",
+        [id]
+      );
+    }
+
     res.json({
       status: 'success',
       message: `Đã xác nhận trạng thái: ${is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}`,
@@ -669,8 +695,8 @@ const staffGetBookings = async (req, res) => {
 
     if (status && status !== "all") {
       if (status === "staff_confirmed") {
-        whereSql += " AND b.status IN (?, ?)";
-        params.push("staff_confirmed", "completed");
+        whereSql += " AND b.status IN (?, ?, ?)";
+        params.push("staff_confirmed", "completed", "accountant_paid");
       } else {
         whereSql += " AND b.status = ?";
         params.push(status);
@@ -685,6 +711,17 @@ const staffGetBookings = async (req, res) => {
         whereSql += " AND b.is_valid = 'no'";
       } else if (is_valid === "null") {
         whereSql += " AND b.is_valid IS NULL";
+      }
+    }
+
+    // Filter theo accountant_status
+    const accountant_status = req.query.accountant_status;
+    if (accountant_status && accountant_status !== "all") {
+      if (accountant_status === "null") {
+        whereSql += " AND b.accountant_status IS NULL";
+      } else {
+        whereSql += " AND b.accountant_status = ?";
+        params.push(accountant_status);
       }
     }
 
@@ -996,10 +1033,15 @@ const accountantGetBookings = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Lấy tất cả đơn mà khách đã chuyển tiền (đã up bill)
-    let whereSql = "WHERE b.status IN ('customer_paid', 'staff_confirmed', 'accountant_paid')";
+    let whereSql = "WHERE b.status IN ('customer_paid', 'staff_confirmed')";
     const params = [];
 
-    if (status) {
+    if (status === 'pending') {
+      whereSql += " AND b.accountant_status = 'pending'";
+    } else if (status === 'paid') {
+      whereSql += " AND b.accountant_status = 'paid'";
+    } else if (status) {
+      // filter theo status cụ thể nếu truyền vào
       whereSql += " AND b.status = ?";
       params.push(status);
     }
@@ -1025,9 +1067,9 @@ const accountantGetBookings = async (req, res) => {
       `
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN b.status IN ('customer_paid', 'staff_confirmed') THEN 1 END) as pending_count,
-        COUNT(CASE WHEN b.status = 'accountant_paid' THEN 1 END) as completed_count,
-        SUM(CASE WHEN b.status = 'accountant_paid' THEN b.transfer_amount ELSE 0 END) as total_amount
+        COUNT(CASE WHEN b.accountant_status = 'pending' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN b.accountant_status = 'paid' THEN 1 END) as completed_count,
+        SUM(CASE WHEN b.accountant_status = 'paid' THEN b.transfer_amount ELSE 0 END) as total_amount
       FROM bookings b 
       JOIN users u ON u.id = b.customer_id 
       ${whereSql}
@@ -1174,13 +1216,13 @@ const accountantConfirmPaid = async (req, res) => {
     const [existing] = await pool.query("SELECT * FROM bookings WHERE id = ?", [bookingId]);
     if (existing.length === 0) return res.status(404).json({ message: "Không tìm thấy đơn" });
     
-    if (!['staff_confirmed', 'customer_paid'].includes(existing[0].status)) {
-      return res.status(400).json({ message: "Đơn này chưa được khách thanh toán hoặc đã được kế toán xử lý" });
+    if (existing[0].accountant_status !== 'pending' && existing[0].is_valid !== 'yes') {
+      return res.status(400).json({ message: "Đơn này chưa ở trạng thái chờ kế toán thanh toán" });
     }
 
     await pool.query(
       `UPDATE bookings 
-       SET status = 'accountant_paid', 
+       SET accountant_status = 'paid', 
            accountant_paid_proof_url = ?, 
            accountant_paid_proof_urls = ?,
            accountant_paid_at = NOW() 

@@ -39,8 +39,9 @@ const bookingFields = {
   accountant_paid_at: 'TIMESTAMP NULL', // Thời gian kế toán chuyển tiền
 
   // Trạng thái & xác nhận
-  status: "ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'",
+  status: "ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'",
   is_valid: "ENUM('yes', 'no') NULL", // Xác nhận hợp lệ do admin/accountant
+  accountant_status: "ENUM('pending', 'paid', 'rejected') NULL", // null = chưa đến bước kế toán, pending = chờ kế toán thanh toán, paid = đã thanh toán, rejected = từ chối chuyển tiền
   reject_note: 'TEXT NULL', // Lý do từ chối
 
   // Timestamps

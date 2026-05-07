@@ -22,6 +22,7 @@ const AdminBookingManager = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [validFilter, setValidFilter] = useState('all');
   const [processingFilter, setProcessingFilter] = useState('all');
+  const [accountantFilter, setAccountantFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [qrNameFilter, setQrNameFilter] = useState('');
   const [qrList, setQrList] = useState([]);
@@ -43,10 +44,11 @@ const AdminBookingManager = () => {
     status: statusFilter === 'all' ? undefined : statusFilter,
     processing_status: processingFilter === 'all' ? undefined : processingFilter,
     is_valid: validFilter === 'all' ? undefined : validFilter,
+    accountant_status: accountantFilter === 'all' ? undefined : accountantFilter,
     search: searchTerm.trim() || undefined,
     qrName: qrNameFilter.trim() || undefined,
     dateRange: dateFilter === 'all' ? undefined : dateFilter,
-  }), [statusFilter, processingFilter, validFilter, searchTerm, qrNameFilter, dateFilter]);
+  }), [statusFilter, processingFilter, validFilter, accountantFilter, searchTerm, qrNameFilter, dateFilter]);
 
   useEffect(() => {
     api.get('/qrs').then(res => {
@@ -78,7 +80,7 @@ const AdminBookingManager = () => {
     };
     load();
     return () => { active = false; };
-  }, [currentPage, statusFilter, processingFilter, validFilter, searchTerm, qrNameFilter, dateFilter]);
+  }, [currentPage, statusFilter, processingFilter, validFilter, accountantFilter, searchTerm, qrNameFilter, dateFilter]);
 
   // Reset page khi filter thay đổi
   const handleFilterChange = (setter) => (e) => {
@@ -172,7 +174,7 @@ const AdminBookingManager = () => {
         <div className="stat-card pending">
           <div className="stat-icon"><UserPlus size={20} /></div>
           <div className="stat-info">
-            <span className="stat-label">Chưa nhận</span>
+            <span className="stat-label">Mới tạo </span>
             <span className="stat-value">{stats.pending_claim}</span>
           </div>
         </div>
@@ -259,6 +261,12 @@ const AdminBookingManager = () => {
             <option value="no">Không hợp lệ</option>
             <option value="null">Chưa xác nhận</option>
           </select>
+          <select value={accountantFilter} onChange={handleFilterChange(setAccountantFilter)}>
+            <option value="all">Tất cả kế toán</option>
+            <option value="pending">Chờ thanh toán</option>
+            <option value="paid">Đã thanh toán</option>
+            <option value="rejected">Từ chối</option>
+          </select>
           <select value={dateFilter} onChange={handleFilterChange(setDateFilter)}>
             {dateOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
@@ -313,11 +321,13 @@ const AdminBookingManager = () => {
                     : <span className="no-staff">Chưa có</span>}
                 </td>
                 <td data-label="Kế toán">
-                  {(b.status === 'accountant_paid' || b.status === 'staff_confirmed' || b.status === 'customer_paid') && b.is_valid === 'yes'
-                    ? b.status === 'accountant_paid'
-                      ? <span className="acc-status paid">Đã thanh toán</span>
-                      : <span className="acc-status pending">Chưa thanh toán</span>
-                    : <span className="no-accountant">—</span>}
+                  {b.accountant_status === 'paid'
+                    ? <span className="acc-status paid">Đã thanh toán</span>
+                    : b.accountant_status === 'pending'
+                      ? <span className="acc-status pending">Chờ thanh toán</span>
+                      : b.accountant_status === 'rejected'
+                        ? <span className="acc-status rejected">Từ chối</span>
+                        : <span className="no-accountant">—</span>}
                 </td>
                 <td data-label="Trạng thái">
                   <span className={`status-text ${b.status}`}>{statusLabel(b.status)}</span>

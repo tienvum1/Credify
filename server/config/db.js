@@ -227,7 +227,37 @@ const initDB = async () => {
       console.error('Lỗi khi thêm cột qr_image vào bank_accounts:', err.message);
     }
 
-    // Migration: xóa cột qr_name khỏi bookings (tên QR lấy live từ bảng qrs qua JOIN)
+    // Migration: thêm cột accountant_status vào bookings
+    try {
+      const [accStatusCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'accountant_status'");
+      if (accStatusCols.length === 0) {
+        await connection.query("ALTER TABLE bookings ADD COLUMN accountant_status ENUM('pending', 'paid', 'rejected') NULL AFTER is_valid");
+        console.log('Đã thêm cột accountant_status vào bảng bookings');
+      } else {
+        // Đảm bảo ENUM có đủ giá trị
+        await connection.query("ALTER TABLE bookings MODIFY COLUMN accountant_status ENUM('pending', 'paid', 'rejected') NULL");
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột accountant_status:', err.message);
+    }
+
+    // Migration: chuyển đổi dữ liệu cũ accountant_paid → staff_confirmed + accountant_status
+    try {
+      await connection.query(`
+        UPDATE bookings 
+        SET status = 'staff_confirmed', accountant_status = 'paid'
+        WHERE status = 'accountant_paid'
+      `);
+      // Đồng bộ lại ENUM status (bỏ accountant_paid)
+      await connection.query(`
+        ALTER TABLE bookings MODIFY COLUMN status 
+        ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') 
+        NOT NULL DEFAULT 'created'
+      `);
+      console.log('Đã migrate accountant_paid → staff_confirmed + accountant_status=paid');
+    } catch (err) {
+      console.error('Lỗi khi migrate accountant_paid:', err.message);
+    }
     try {
       const [qrNameBookingCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'qr_name'");
       if (qrNameBookingCols.length > 0) {

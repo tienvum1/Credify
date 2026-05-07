@@ -78,7 +78,13 @@ const AccountantBookingDetail = () => {
     setValidityUpdating(true);
     try {
       await api.patch(`/bookings/${id}/validity`, { is_valid: value });
-      setBooking(prev => ({ ...prev, is_valid: value }));
+      setBooking(prev => ({
+        ...prev,
+        is_valid: value,
+        accountant_status: value === 'yes'
+          ? (prev.accountant_status === null ? 'pending' : prev.accountant_status)
+          : (prev.accountant_status === 'pending' ? 'rejected' : prev.accountant_status)
+      }));
       toast.success(`Đã xác nhận: ${value === 'yes' ? 'CÓ' : 'KHÔNG'}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi khi xác nhận');
@@ -95,7 +101,7 @@ const AccountantBookingDetail = () => {
   );
   if (!booking) return null;
 
-  const isPending = booking.status !== 'accountant_paid';
+  const isPending = booking.accountant_status !== 'paid';
 
   return (
     <div className="acc-detail">
@@ -106,9 +112,10 @@ const AccountantBookingDetail = () => {
         </button>
         <div className="acc-title-row">
           <h1>Đơn #{booking.code.slice(-8).toUpperCase()}</h1>
-          <span className={`acc-status-badge ${booking.status}`}>
-            {booking.status === 'accountant_paid' ? 'Đã hoàn tất' :
-             booking.status === 'staff_confirmed' ? 'Chờ kế toán chuyển' :
+          <span className={`acc-status-badge ${booking.accountant_status || 'pending'}`}>
+            {booking.accountant_status === 'paid' ? 'Đã hoàn tất' :
+             booking.accountant_status === 'rejected' ? 'Từ chối chuyển tiền' :
+             booking.accountant_status === 'pending' ? 'Chờ kế toán chuyển' :
              'Khách đã gửi bill'}
           </span>
         </div>
@@ -319,9 +326,9 @@ const AccountantBookingDetail = () => {
                 <span>Xác nhận chuyển tiền</span>
               </div>
               <div className="acc-card-body">
-                {booking.is_valid !== 'yes' ? (
+                {!(booking.is_valid === 'yes' && booking.accountant_status === 'pending') ? (
                   <div className="upload-blocked">
-                    <p>⚠️ Vui lòng xác nhận đơn hàng là <strong>CÓ</strong> hợp lệ trước khi upload bill chuyển tiền.</p>
+                    <p>⚠️ Cần xác nhận đơn hàng là <strong>CÓ</strong> hợp lệ và đơn phải ở trạng thái chờ kế toán thanh toán.</p>
                   </div>
                 ) : (
                   <>
