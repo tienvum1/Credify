@@ -52,6 +52,7 @@ const createBooking = async (req, res) => {
       customer_bank_name,
       customer_account_number,
       customer_account_holder,
+      customer_bank_qr_image,
       transfer_amount,
     } = req.body;
 
@@ -86,13 +87,13 @@ const createBooking = async (req, res) => {
 
     // Lấy thông tin ngân hàng Admin mặc định (tài khoản đầu tiên của admin_system)
     const [adminBanks] = await pool.query(
-      "SELECT account_holder, bank_name, account_number FROM bank_accounts ba JOIN users u ON u.id = ba.user_id WHERE u.role = 'admin_system' AND ba.is_default = 1 LIMIT 1"
-    );
-    
+      "SELECT account_holder, bank_name, account_number, qr_image FROM bank_accounts ba JOIN users u ON u.id = ba.user_id WHERE u.role = 'admin_system' AND ba.is_default = 1 LIMIT 1"
+    );    
     let adminBankInfo = {
       name: adminBanks[0]?.bank_name || "Hệ thống",
       number: adminBanks[0]?.account_number || "0000000000",
-      holder: adminBanks[0]?.account_holder || "ADMIN"
+      holder: adminBanks[0]?.account_holder || "ADMIN",
+      qr_image: adminBanks[0]?.qr_image || null
     };
 
     const maxAmount = toNumber(qr.max_amount_per_trans);
@@ -119,22 +120,24 @@ const createBooking = async (req, res) => {
       `
         INSERT INTO bookings (
           code, qr_id, customer_id, staff_id, 
-          customer_bank_name, customer_account_number, customer_account_holder,
-          admin_bank_name, admin_account_number, admin_account_holder,
+          customer_bank_name, customer_account_number, customer_account_holder, customer_bank_qr_image,
+          admin_bank_name, admin_account_number, admin_account_holder, admin_bank_qr_image,
           transfer_amount, fee_rate, fee_amount, net_amount, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
       `,
       [
         code,
         qr_id,
         customer_id,
-        null, // staff_id khởi tạo là null, chờ nhân viên nhận đơn
+        null,
         String(customer_bank_name).trim(),
         String(customer_account_number).trim(),
         String(customer_account_holder).trim(),
+        customer_bank_qr_image || null,
         adminBankInfo.name,
         adminBankInfo.number,
         adminBankInfo.holder,
+        adminBankInfo.qr_image,
         transferAmountNumber,
         feeRate,
         fee_amount,

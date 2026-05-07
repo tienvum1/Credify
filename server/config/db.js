@@ -196,6 +196,7 @@ const initDB = async () => {
         account_holder VARCHAR(255) NOT NULL,
         bank_name VARCHAR(255) NOT NULL,
         account_number VARCHAR(50) NOT NULL,
+        qr_image VARCHAR(500) NULL,
         is_default TINYINT(1) DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -204,6 +205,38 @@ const initDB = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // Migration: thêm cột qr_image vào bank_accounts nếu chưa có
+    try {
+      const [bankCols] = await connection.query("SHOW COLUMNS FROM bank_accounts LIKE 'qr_image'");
+      if (bankCols.length === 0) {
+        await connection.query("ALTER TABLE bank_accounts ADD COLUMN qr_image VARCHAR(500) NULL AFTER account_number");
+        console.log('Đã thêm cột qr_image vào bảng bank_accounts');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột qr_image vào bank_accounts:', err.message);
+    }
+
+    // Migration: thêm cột customer_bank_qr_image vào bookings nếu chưa có
+    try {
+      const [bqrCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'customer_bank_qr_image'");
+      if (bqrCols.length === 0) {
+        await connection.query("ALTER TABLE bookings ADD COLUMN customer_bank_qr_image VARCHAR(500) NULL AFTER customer_account_holder");
+        console.log('Đã thêm cột customer_bank_qr_image vào bảng bookings');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột customer_bank_qr_image vào bookings:', err.message);
+    }
+
+    // Migration: thêm cột admin_bank_qr_image vào bookings nếu chưa có
+    try {
+      const [abqrCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'admin_bank_qr_image'");
+      if (abqrCols.length === 0) {
+        await connection.query("ALTER TABLE bookings ADD COLUMN admin_bank_qr_image VARCHAR(500) NULL AFTER admin_account_holder");
+        console.log('Đã thêm cột admin_bank_qr_image vào bảng bookings');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm cột admin_bank_qr_image vào bookings:', err.message);
+    }
     // Kiểm tra và thêm cột staff_paid_proof_urls vào bảng bookings
     try {
       const [columns] = await connection.query('SHOW COLUMNS FROM bookings');

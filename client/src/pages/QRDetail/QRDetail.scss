@@ -301,9 +301,10 @@
             background: #f5f3ff;
             border-color: #4f46e5;
             border-style: solid;
-            
+
             .manual-content {
               color: #4f46e5;
+
               .plus-icon {
                 background: #4f46e5;
                 color: white;
@@ -346,7 +347,8 @@
     text-align: center; // Center as shown in screenshot
   }
 
-  input, .bank-select {
+  input,
+  .bank-select {
     display: block;
     width: 100%;
     min-width: 0; // Force shrink
@@ -379,7 +381,7 @@
 
   .money-input-wrapper {
     width: 100%;
-    
+
     .input-preview {
       display: block;
       font-size: 13px;
@@ -607,6 +609,24 @@
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ── Bank card QR thumbnail ───────────────────────────────────────────────────
+.bank-card-qr-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 6px;
+  display: block;
 }

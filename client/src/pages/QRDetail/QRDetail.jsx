@@ -17,6 +17,7 @@ const QRDetail = () => {
   const [submittingCreate, setSubmittingCreate] = useState(false);
   const [savedBankAccounts, setSavedBankAccounts] = useState([]);
   const [selectedBankId, setSelectedBankId] = useState(null);
+  const [selectedBankQrImage, setSelectedBankQrImage] = useState(null);
   const [showManualInput, setShowManualInput] = useState(false);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ const QRDetail = () => {
       setBankAccountNumber('');
       setAccountHolderName('');
       setAmount('');
+      setSelectedBankQrImage(null);
     });
 
     api.get(`/qrs/ready/${id}`)
@@ -67,6 +69,7 @@ const QRDetail = () => {
           setBankName(defaultBank.bank_name);
           setBankAccountNumber(defaultBank.account_number);
           setAccountHolderName(defaultBank.account_holder);
+          setSelectedBankQrImage(defaultBank.qr_image || null);
         } else if (res.data.data.length === 0) {
           setShowManualInput(true);
         }
@@ -145,6 +148,7 @@ const QRDetail = () => {
       customer_bank_name: bankName.trim(),
       customer_account_number: bankAccountNumber.trim(),
       customer_account_holder: accountHolderName.trim(),
+      customer_bank_qr_image: selectedBankQrImage || null,
       transfer_amount: computed.amountNumber
     })
       .then((res) => {
@@ -221,6 +225,7 @@ const QRDetail = () => {
                         setBankName(bank.bank_name);
                         setBankAccountNumber(bank.account_number);
                         setAccountHolderName(bank.account_holder);
+                        setSelectedBankQrImage(bank.qr_image || null);
                         setShowManualInput(false);
                       }}
                     >
@@ -246,6 +251,7 @@ const QRDetail = () => {
                       setBankName('');
                       setBankAccountNumber('');
                       setAccountHolderName('');
+                      setSelectedBankQrImage(null);
                     }}
                   >
                     <div className="manual-content">

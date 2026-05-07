@@ -370,6 +370,45 @@
           transform: translateY(0);
         }
       }
+
+      .pay-btn {
+        padding: 10px 20px;
+        background: #f59e0b;
+        border: none;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+
+        &::before {
+          content: '💳';
+          font-size: 13px;
+        }
+
+        &:hover {
+          background: #d97706;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+
+      // Wrap multiple action buttons
+      td[data-label="Thao tác"] {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
     }
   }
 
@@ -458,6 +497,13 @@
                   width: 100%;
                   justify-content: center;
                   padding: 12px;
+                }
+
+                .pay-btn {
+                  width: 100%;
+                  justify-content: center;
+                  padding: 12px;
+                  margin-bottom: 8px;
                 }
               }
             }

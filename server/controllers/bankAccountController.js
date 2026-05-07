@@ -1,4 +1,17 @@
 const pool = require('../config/db').pool;
+const { cloudinary } = require('../config/cloudinary');
+
+// Helper: xóa ảnh cũ trên Cloudinary
+const deleteCloudinaryImage = async (url) => {
+  if (!url) return;
+  try {
+    const parts = url.split('/');
+    const folderAndPublicId = parts.slice(-2).join('/').split('.')[0];
+    await cloudinary.uploader.destroy(folderAndPublicId);
+  } catch (err) {
+    console.error('Lỗi khi xóa ảnh Cloudinary:', err.message);
+  }
+};
 
 // Lấy danh sách tài khoản ngân hàng của tôi
 exports.getMyBankAccounts = async (req, res) => {
@@ -25,6 +38,9 @@ exports.addBankAccount = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin' });
     }
 
+    // Lấy URL ảnh QR nếu có upload
+    const qr_image = req.file ? req.file.path : null;
+
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
@@ -42,12 +58,12 @@ exports.addBankAccount = async (req, res) => {
         'SELECT id FROM bank_accounts WHERE user_id = ? LIMIT 1',
         [userId]
       );
-      
+
       const finalIsDefault = (existing.length === 0) ? 1 : (is_default ? 1 : 0);
 
       await connection.query(
-        'INSERT INTO bank_accounts (user_id, account_holder, bank_name, account_number, is_default) VALUES (?, ?, ?, ?, ?)',
-        [userId, account_holder, bank_name, account_number, finalIsDefault]
+        'INSERT INTO bank_accounts (user_id, account_holder, bank_name, account_number, qr_image, is_default) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, account_holder, bank_name, account_number, qr_image, finalIsDefault]
       );
 
       await connection.commit();
@@ -75,14 +91,22 @@ exports.updateBankAccount = async (req, res) => {
     await connection.beginTransaction();
 
     try {
-      // Kiểm tra quyền sở hữu
+      // Kiểm tra quyền sở hữu và lấy ảnh cũ
       const [check] = await connection.query(
-        'SELECT id FROM bank_accounts WHERE id = ? AND user_id = ?',
+        'SELECT id, qr_image FROM bank_accounts WHERE id = ? AND user_id = ?',
         [id, userId]
       );
       if (check.length === 0) {
         await connection.rollback();
         return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản hoặc bạn không có quyền' });
+      }
+
+      // Xử lý ảnh QR mới nếu có upload
+      let qr_image = check[0].qr_image; // Giữ ảnh cũ mặc định
+      if (req.file) {
+        // Xóa ảnh cũ trên Cloudinary nếu có
+        await deleteCloudinaryImage(check[0].qr_image);
+        qr_image = req.file.path;
       }
 
       // Nếu đặt làm mặc định, bỏ mặc định của các tài khoản khác
@@ -94,8 +118,8 @@ exports.updateBankAccount = async (req, res) => {
       }
 
       await connection.query(
-        'UPDATE bank_accounts SET account_holder = ?, bank_name = ?, account_number = ?, is_default = ? WHERE id = ?',
-        [account_holder, bank_name, account_number, is_default ? 1 : 0, id]
+        'UPDATE bank_accounts SET account_holder = ?, bank_name = ?, account_number = ?, qr_image = ?, is_default = ? WHERE id = ?',
+        [account_holder, bank_name, account_number, qr_image, is_default ? 1 : 0, id]
       );
 
       await connection.commit();
@@ -119,13 +143,16 @@ exports.deleteBankAccount = async (req, res) => {
     const { id } = req.params;
 
     const [check] = await pool.query(
-      'SELECT id, is_default FROM bank_accounts WHERE id = ? AND user_id = ?',
+      'SELECT id, is_default, qr_image FROM bank_accounts WHERE id = ? AND user_id = ?',
       [id, userId]
     );
-    
+
     if (check.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản hoặc bạn không có quyền' });
     }
+
+    // Xóa ảnh QR trên Cloudinary nếu có
+    await deleteCloudinaryImage(check[0].qr_image);
 
     await pool.query('DELETE FROM bank_accounts WHERE id = ?', [id]);
 

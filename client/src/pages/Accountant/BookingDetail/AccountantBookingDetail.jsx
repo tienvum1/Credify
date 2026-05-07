@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
-import { 
+import {
   ChevronLeft,
-  Upload, Shield, FileText
+  Upload, Shield, FileText, QrCode, ZoomIn
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import './AccountantBookingDetail.scss';
@@ -16,27 +16,27 @@ const AccountantBookingDetail = () => {
   const [proofFiles, setProofFiles] = useState([]);
   const [proofPreviews, setProofPreviews] = useState([]);
   const [updating, setUpdating] = useState(false);
+  const [lightbox, setLightbox] = useState(null); // URL đang xem phóng to
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         const res = await api.get(`/bookings/accountant/${id}`);
         const data = res.data;
-        
+
         // Parse JSON proof urls
         if (data.accountant_paid_proof_urls) {
           try {
-            data.proof_urls = typeof data.accountant_paid_proof_urls === 'string' 
-              ? JSON.parse(data.accountant_paid_proof_urls) 
+            data.proof_urls = typeof data.accountant_paid_proof_urls === 'string'
+              ? JSON.parse(data.accountant_paid_proof_urls)
               : data.accountant_paid_proof_urls;
-          } catch (error) {
-            console.error('Lỗi parse accountant_paid_proof_urls:', error);
+          } catch {
             data.proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
           }
         } else {
           data.proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
         }
-        
+
         setBooking(data);
       } catch (error) {
         console.error('Lỗi fetch accountant detail:', error);
@@ -53,19 +53,13 @@ const AccountantBookingDetail = () => {
     const files = Array.from(e.target.files);
     const newFiles = [...proofFiles, ...files].slice(0, 3);
     setProofFiles(newFiles);
-    
-    const previews = newFiles.map(file => URL.createObjectURL(file));
-    setProofPreviews(previews);
+    setProofPreviews(newFiles.map(file => URL.createObjectURL(file)));
   };
 
   const removeFile = (index) => {
-    const newFiles = [...proofFiles];
-    newFiles.splice(index, 1);
+    const newFiles = proofFiles.filter((_, i) => i !== index);
     setProofFiles(newFiles);
-
-    const newPreviews = [...proofPreviews];
-    newPreviews.splice(index, 1);
-    setProofPreviews(newPreviews);
+    setProofPreviews(newFiles.map(file => URL.createObjectURL(file)));
   };
 
   const handleConfirmPaid = async (e) => {
@@ -73,9 +67,7 @@ const AccountantBookingDetail = () => {
     if (proofFiles.length === 0) return toast.warn('Vui lòng chọn ít nhất một ảnh bill chuyển tiền');
 
     const formData = new FormData();
-    proofFiles.forEach(file => {
-      formData.append('proof', file);
-    });
+    proofFiles.forEach(file => formData.append('proof', file));
 
     setUpdating(true);
     try {
@@ -83,130 +75,216 @@ const AccountantBookingDetail = () => {
       toast.success('Xác nhận đã chuyển tiền thành công');
       window.location.reload();
     } catch (error) {
-      console.error(error);
       toast.error(error.response?.data?.message || 'Lỗi khi xác nhận chuyển tiền');
     } finally {
       setUpdating(false);
     }
   };
 
-  const formatMoney = (amount) => {
-    return Number(amount || 0).toLocaleString('vi-VN') + 'đ';
-  };
+  const formatMoney = (amount) =>
+    Number(amount || 0).toLocaleString('vi-VN') + 'đ';
 
-  if (loading) return <div className="loading-container"><div className="spinner"></div></div>;
+  if (loading) return (
+    <div className="acc-loading">
+      <div className="acc-spinner" />
+    </div>
+  );
   if (!booking) return null;
 
+  const isPending = booking.status === 'staff_confirmed';
+
   return (
-    <div className="accountant-detail-container">
-      <div className="detail-header">
-        <button className="back-btn" onClick={() => navigate('/accountant/bookings')}>
-          <ChevronLeft size={20} /> Quay lại danh sách
+    <div className="acc-detail">
+      {/* ── Header ── */}
+      <div className="acc-header">
+        <button className="acc-back-btn" onClick={() => navigate('/accountant/bookings')}>
+          <ChevronLeft size={18} /> Quay lại
         </button>
-        <div className="booking-title">
-          <h1>Chi tiết đơn hàng #{booking.code.slice(-8).toUpperCase()}</h1>
-          <span className={`status-badge ${booking.status}`}>
-            {booking.status === 'staff_confirmed' ? 'Chờ thanh toán' : 'Đã hoàn tất'}
+        <div className="acc-title-row">
+          <h1>Đơn #{booking.code.slice(-8).toUpperCase()}</h1>
+          <span className={`acc-status-badge ${booking.status}`}>
+            {isPending ? 'Chờ thanh toán' : 'Đã hoàn tất'}
           </span>
         </div>
       </div>
 
-      <div className="detail-grid">
-        <div className="main-info">
-          {/* Bill của khách chuyển */}
-          <div className="info-card customer-bill-card">
-            <div className="card-header">
-              <FileText size={20} />
-              <h2>Hóa đơn khách đã chuyển</h2>
+      {/* ── Main layout ── */}
+      <div className="acc-layout">
+
+        {/* ── LEFT COLUMN ── */}
+        <div className="acc-left">
+
+          {/* Admin bank info + QR */}
+          <div className="acc-card">
+            <div className="acc-card-header">
+              <Shield size={18} />
+              <span>Tài khoản Admin — Chuyển tiền đến đây</span>
             </div>
-            <div className="card-body">
-              <div className="customer-proof-container">
-                <img src={booking.customer_paid_proof_url} alt="Bill của khách" className="customer-proof-img" />
+            <div className="acc-card-body admin-bank-body">
+              {/* QR image */}
+              {booking.admin_bank_qr_image ? (
+                <div className="admin-qr-block">
+                  <div
+                    className="admin-qr-img-wrap"
+                    onClick={() => setLightbox(booking.admin_bank_qr_image)}
+                    title="Nhấn để phóng to"
+                  >
+                    <img src={booking.admin_bank_qr_image} alt="QR ngân hàng Admin" />
+                    <div className="admin-qr-zoom-hint">
+                      <ZoomIn size={16} />
+                    </div>
+                  </div>
+                  <p className="admin-qr-caption">Quét QR để chuyển tiền</p>
+                </div>
+              ) : (
+                <div className="admin-qr-block no-qr">
+                  <QrCode size={48} />
+                  <p>Chưa có ảnh QR</p>
+                </div>
+              )}
+
+              {/* Bank details */}
+              <div className="admin-bank-details">
+                <div className="bank-detail-row">
+                  <span className="bdl">Ngân hàng</span>
+                  <span className="bdv">{booking.admin_bank_name || '—'}</span>
+                </div>
+                <div className="bank-detail-row">
+                  <span className="bdl">Số tài khoản</span>
+                  <span className="bdv mono">{booking.admin_account_number || '—'}</span>
+                </div>
+                <div className="bank-detail-row">
+                  <span className="bdl">Chủ tài khoản</span>
+                  <span className="bdv">{booking.admin_account_holder || '—'}</span>
+                </div>
+                <div className="bank-detail-row total-row">
+                  <span className="bdl">Số tiền cần chuyển</span>
+                  <span className="bdv amount">{formatMoney(booking.net_amount)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Thông tin nguồn tiền của Admin */}
-          <div className="info-card">
-            <div className="card-header">
-              <Shield size={20} />
-              <h2>Nguồn tiền chuyển đi (Admin)</h2>
+          {/* Customer bill */}
+          <div className="acc-card">
+            <div className="acc-card-header">
+              <FileText size={18} />
+              <span>Hóa đơn khách đã chuyển</span>
             </div>
-            <div className="card-body">
-              <div className="info-item">
-                <span className="label">Tên Admin:</span>
-                <span className="value">{booking.admin_account_holder}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Số tài khoản Admin:</span>
-                <span className="value mono">{booking.admin_account_number}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Ngân hàng Admin:</span>
-                <span className="value">{booking.admin_bank_name}</span>
-              </div>
-              <div className="info-item total">
-                <span className="label">Số tiền cần chuyển:</span>
-                <span className="value amount">{formatMoney(booking.transfer_amount)}</span>
-              </div>
+            <div className="acc-card-body">
+              {booking.customer_paid_proof_url ? (
+                <div
+                  className="customer-proof-wrap"
+                  onClick={() => setLightbox(booking.customer_paid_proof_url)}
+                  title="Nhấn để phóng to"
+                >
+                  <img
+                    src={booking.customer_paid_proof_url}
+                    alt="Bill của khách"
+                    className="customer-proof-img"
+                  />
+                  <div className="proof-zoom-hint"><ZoomIn size={16} /></div>
+                </div>
+              ) : (
+                <p className="no-proof-text">Chưa có hóa đơn</p>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="action-sidebar">
-          {booking.status === 'staff_confirmed' ? (
-            <div className="confirm-card">
-              <h3>Xác nhận chuyển tiền</h3>
-              <p className="hint">Vui lòng tải ảnh màn hình biên lai chuyển tiền thành công (Tối đa 3 ảnh).</p>
-              
-              <form onSubmit={handleConfirmPaid}>
-                <div className="upload-grid-multi">
+        {/* ── RIGHT COLUMN ── */}
+        <div className="acc-right">
+          {isPending ? (
+            <div className="acc-card confirm-card">
+              <div className="acc-card-header">
+                <Upload size={18} />
+                <span>Xác nhận chuyển tiền</span>
+              </div>
+              <div className="acc-card-body">
+                <p className="confirm-hint">
+                  Sau khi chuyển tiền thành công, tải ảnh biên lai để xác nhận (tối đa 3 ảnh).
+                </p>
+
+                <div className="upload-grid">
                   {proofPreviews.map((preview, idx) => (
-                    <div key={idx} className="preview-item">
-                      <img src={preview} alt="Preview" />
-                      <button type="button" className="remove-btn" onClick={() => removeFile(idx)}>×</button>
+                    <div key={idx} className="upload-preview">
+                      <img src={preview} alt={`Preview ${idx + 1}`} />
+                      <button
+                        type="button"
+                        className="upload-remove"
+                        onClick={() => removeFile(idx)}
+                      >×</button>
                     </div>
                   ))}
-                  
+
                   {proofFiles.length < 3 && (
-                    <div className="upload-box-mini" onClick={() => document.getElementById('proof-input').click()}>
-                      <Upload size={24} />
-                      <p>Thêm ảnh</p>
-                    </div>
+                    <label className="upload-add">
+                      <input
+                        type="file"
+                        hidden
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileChange}
+                      />
+                      <Upload size={22} />
+                      <span>Thêm ảnh</span>
+                    </label>
                   )}
-                  <input 
-                    id="proof-input" 
-                    type="file" 
-                    hidden 
-                    multiple
-                    accept="image/*" 
-                    onChange={handleFileChange} 
-                  />
                 </div>
-                
-                <button type="submit" className="submit-confirm-btn" disabled={updating || proofFiles.length === 0}>
-                  {updating ? 'Đang lưu...' : 'Xác nhận Đã chuyển tiền'}
+
+                <button
+                  className="confirm-btn"
+                  onClick={handleConfirmPaid}
+                  disabled={updating || proofFiles.length === 0}
+                >
+                  {updating ? 'Đang lưu...' : '✓ Xác nhận đã chuyển tiền'}
                 </button>
-              </form>
+              </div>
             </div>
           ) : (
-            <div className="completed-card">
-              <h3>Đơn hàng đã hoàn tất</h3>
-              <p>Kế toán đã chuyển tiền vào lúc:</p>
-              <div className="time">{new Date(booking.accountant_paid_at).toLocaleString('vi-VN')}</div>
-              
-              <div className="proof-display-multi">
-                <h4>Hóa đơn chuyển tiền:</h4>
-                <div className="proof-grid">
-                  {booking.proof_urls && booking.proof_urls.map((url, idx) => (
-                    <img key={idx} src={url} alt={`Bill chuyển tiền ${idx + 1}`} onClick={() => window.open(url, '_blank')} />
-                  ))}
-                </div>
+            <div className="acc-card completed-card">
+              <div className="acc-card-header success">
+                <span>✓</span>
+                <span>Đơn hàng đã hoàn tất</span>
+              </div>
+              <div className="acc-card-body">
+                <p className="completed-time">
+                  Chuyển tiền lúc:{' '}
+                  <strong>{new Date(booking.accountant_paid_at).toLocaleString('vi-VN')}</strong>
+                </p>
+
+                {booking.proof_urls && booking.proof_urls.length > 0 && (
+                  <div className="completed-proofs">
+                    <p className="proofs-label">Biên lai đã tải:</p>
+                    <div className="proofs-grid">
+                      {booking.proof_urls.map((url, idx) => (
+                        <div
+                          key={idx}
+                          className="proof-thumb"
+                          onClick={() => setLightbox(url)}
+                        >
+                          <img src={url} alt={`Biên lai ${idx + 1}`} />
+                          <div className="proof-zoom"><ZoomIn size={14} /></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Lightbox ── */}
+      {lightbox && (
+        <div className="acc-lightbox" onClick={() => setLightbox(null)}>
+          <div className="acc-lightbox-inner" onClick={e => e.stopPropagation()}>
+            <button className="acc-lightbox-close" onClick={() => setLightbox(null)}>×</button>
+            <img src={lightbox} alt="Preview" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

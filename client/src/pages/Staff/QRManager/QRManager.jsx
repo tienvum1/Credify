@@ -9,6 +9,7 @@ const StaffQRManager = () => {
   const [editingQr, setEditingQr] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   
   // Form states
@@ -82,6 +83,9 @@ const StaffQRManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return; // chặn double-submit
+    setSubmitting(true);
+
     const formData = new FormData();
     if (mainImageFile) formData.append('main_image', mainImageFile);
     if (qrImageFile) formData.append('qr_image', qrImageFile);
@@ -108,6 +112,8 @@ const StaffQRManager = () => {
       refreshQRs();
     } catch (err) {
       console.error('Lỗi chi tiết:', err.response?.data || err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -164,6 +170,7 @@ const StaffQRManager = () => {
             className="primary-btn"
             onClick={() => {
               resetForm();
+              setSubmitting(false);
               setShowModal(true);
             }}
           >
@@ -339,8 +346,10 @@ const StaffQRManager = () => {
                 </select>
               </div>
               <div className="modal-actions">
-                <button type="submit" className="save-btn">Lưu</button>
-                <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>Hủy</button>
+                <button type="submit" className="save-btn" disabled={submitting}>
+                  {submitting ? 'Đang lưu...' : 'Lưu'}
+                </button>
+                <button type="button" className="cancel-btn" disabled={submitting} onClick={() => setShowModal(false)}>Hủy</button>
               </div>
             </form>
           </div>

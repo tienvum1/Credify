@@ -195,6 +195,14 @@ const BookingPayment = () => {
           <div className="qr-image">
             <img src={qr.qr_image} alt={`QR ${qr.id}`} />
           </div>
+          {booking.customer_bank_qr_image && (
+            <div className="bank-qr-section">
+              <p className="bank-qr-label">QR ngân hàng của bạn</p>
+              <div className="qr-image bank-qr-image">
+                <img src={booking.customer_bank_qr_image} alt="QR ngân hàng" />
+              </div>
+            </div>
+          )}
           <div className="qr-meta">
             <div className="qr-meta-row">
               <span className="label">Số tiền cần chuyển</span>

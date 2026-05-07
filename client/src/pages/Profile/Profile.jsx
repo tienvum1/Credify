@@ -30,6 +30,8 @@ const Profile = () => {
     account_number: '',
     is_default: false
   });
+  const [bankQrFile, setBankQrFile] = useState(null);
+  const [bankQrPreview, setBankQrPreview] = useState(null);
 
   const navigate = useNavigate();
 
@@ -71,6 +73,8 @@ const Profile = () => {
         account_number: bank.account_number,
         is_default: !!bank.is_default
       });
+      setBankQrFile(null);
+      setBankQrPreview(bank.qr_image || null);
     } else {
       setEditingBank(null);
       setBankFormData({
@@ -79,6 +83,8 @@ const Profile = () => {
         account_number: '',
         is_default: bankAccounts.length === 0
       });
+      setBankQrFile(null);
+      setBankQrPreview(null);
     }
     setShowBankModal(true);
   };
@@ -87,21 +93,38 @@ const Profile = () => {
     if (e && e.preventDefault) e.preventDefault();
     try {
       const targetBank = customBank || editingBank;
-      const dataToSave = extraData ? { 
-        account_holder: targetBank.account_holder,
-        bank_name: targetBank.bank_name,
-        account_number: targetBank.account_number,
-        ...extraData 
-      } : bankFormData;
+      
+      // Dùng FormData để hỗ trợ upload ảnh
+      const formData = new FormData();
+      
+      if (extraData) {
+        // Trường hợp chỉ cập nhật is_default (không qua modal)
+        formData.append('account_holder', targetBank.account_holder);
+        formData.append('bank_name', targetBank.bank_name);
+        formData.append('account_number', targetBank.account_number);
+        Object.entries(extraData).forEach(([k, v]) => formData.append(k, v));
+      } else {
+        formData.append('account_holder', bankFormData.account_holder);
+        formData.append('bank_name', bankFormData.bank_name);
+        formData.append('account_number', bankFormData.account_number);
+        formData.append('is_default', bankFormData.is_default ? '1' : '0');
+        if (bankQrFile) {
+          formData.append('qr_image', bankQrFile);
+        }
+      }
 
       if (targetBank && targetBank.id) {
-        await api.put(`/bank-accounts/${targetBank.id}`, dataToSave);
-        toast.success(extraData ? 'Đã cập nhật mặc định' : 'Cập nhật tài khoản ngân hàng thành công');
+        await api.put(`/bank-accounts/${targetBank.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
       } else {
-        await api.post('/bank-accounts', dataToSave);
-        toast.success('Thêm tài khoản ngân hàng thành công');
+        await api.post('/bank-accounts', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
       }
       setShowBankModal(false);
+      setBankQrFile(null);
+      setBankQrPreview(null);
       fetchBankAccounts();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi khi lưu thông tin');
@@ -368,6 +391,11 @@ const Profile = () => {
             <div className="bank-list">
               {bankAccounts.map((bank) => (
                 <div key={bank.id} className={`bank-item ${bank.is_default ? 'default' : ''}`}>
+                  {bank.qr_image && (
+                    <div className="bank-qr-thumb">
+                      <img src={bank.qr_image} alt={`QR ${bank.bank_name}`} />
+                    </div>
+                  )}
                   <div className="bank-info">
                     <div className="bank-name-group">
                       <span className="bank-name">{bank.bank_name}</span>
@@ -431,6 +459,40 @@ const Profile = () => {
                   onChange={(e) => setBankFormData({...bankFormData, account_holder: e.target.value})}
                   required
                 />
+              </div>
+              <div className="form-group">
+                <label>Ảnh QR ngân hàng (tuỳ chọn)</label>
+                <div className="bank-qr-upload">
+                  {bankQrPreview ? (
+                    <div className="bank-qr-preview-wrap">
+                      <img src={bankQrPreview} alt="QR preview" className="bank-qr-preview-img" />
+                      <button
+                        type="button"
+                        className="remove-qr-btn"
+                        onClick={() => { setBankQrFile(null); setBankQrPreview(null); }}
+                      >
+                        <X size={14} /> Xóa ảnh
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="qr-upload-box">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          setBankQrFile(file);
+                          setBankQrPreview(URL.createObjectURL(file));
+                        }}
+                      />
+                      <div className="qr-upload-placeholder">
+                        <span className="plus-icon">+</span>
+                        <span>Tải ảnh QR</span>
+                      </div>
+                    </label>
+                  )}
+                </div>
               </div>
               <div className="form-group-checkbox">
                 <input 

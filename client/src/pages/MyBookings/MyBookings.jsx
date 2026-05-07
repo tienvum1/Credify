@@ -160,7 +160,7 @@ const MyBookings = () => {
               }}
             >
               <option value="all">Tất cả trạng thái</option>
-              <option value="created">Tạo đơn</option>
+              <option value="created">Chờ thanh toán</option>
               <option value="customer_paid">Đang xử lý</option>
               <option value="staff_confirmed">Đã hoàn thành</option>
               <option value="rejected">Từ chối</option>
@@ -189,6 +189,13 @@ const MyBookings = () => {
             <div className="stat-info">
               <span className="label">Tổng số đơn</span>
               <span className="value">{stats.total}</span>
+            </div>
+          </div>
+          <div className="stat-card pending" onClick={() => { setStatusFilter('created'); setCurrentPage(1); }} style={{ cursor: 'pointer' }}>
+            <div className="stat-icon">⏳</div>
+            <div className="stat-info">
+              <span className="label">Chờ thanh toán</span>
+              <span className="value">{stats.pending_count ?? 0}</span>
             </div>
           </div>
           <div className="stat-card amount">
@@ -242,6 +249,14 @@ const MyBookings = () => {
                   <td data-label="Thực nhận"><strong style={{ color: '#10b981' }}>{formatMoney(b.net_amount)}</strong></td>
                   <td data-label="Trạng thái">{statusLabel(b.status)}</td>
                   <td data-label="Thao tác">
+                    {b.status === 'created' && (
+                      <button
+                        className="pay-btn"
+                        onClick={() => navigate(`/payment/${b.id}`)}
+                      >
+                        Thanh toán
+                      </button>
+                    )}
                     <button className="detail-btn" onClick={() => navigate(`/my-bookings/${b.id}`)}>
                       Chi tiết
                     </button>

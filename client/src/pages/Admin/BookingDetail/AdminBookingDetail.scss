@@ -369,6 +369,29 @@
   &.staff .proof-thumb {
     border-color: #6366f1;
   }
+
+  &.accountant .proof-thumb {
+    border-color: #16a34a;
+  }
+}
+
+// Accountant paid time highlight
+.accountant-paid-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+
+  &::before {
+    content: '✓';
+    font-weight: 800;
+  }
 }
 
 // Image Preview Modal

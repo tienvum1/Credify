@@ -52,7 +52,22 @@ const AdminBookingDetail = () => {
 
   const fetchDetail = async () => {
     const res = await api.get(`/bookings/staff/${id}`);
-    setBooking(res.data);
+    const data = res.data;
+
+    // Parse accountant proof urls
+    if (data.accountant_paid_proof_urls) {
+      try {
+        data.accountant_proof_urls = typeof data.accountant_paid_proof_urls === 'string'
+          ? JSON.parse(data.accountant_paid_proof_urls)
+          : data.accountant_paid_proof_urls;
+      } catch {
+        data.accountant_proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
+      }
+    } else {
+      data.accountant_proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
+    }
+
+    setBooking(data);
   };
 
   useEffect(() => {
@@ -66,7 +81,23 @@ const AdminBookingDetail = () => {
         ]);
         
         if (!active) return;
-        setBooking(bookingRes.data);
+
+        const data = bookingRes.data;
+
+        // Parse accountant proof urls
+        if (data.accountant_paid_proof_urls) {
+          try {
+            data.accountant_proof_urls = typeof data.accountant_paid_proof_urls === 'string'
+              ? JSON.parse(data.accountant_paid_proof_urls)
+              : data.accountant_paid_proof_urls;
+          } catch {
+            data.accountant_proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
+          }
+        } else {
+          data.accountant_proof_urls = data.accountant_paid_proof_url ? [data.accountant_paid_proof_url] : [];
+        }
+
+        setBooking(data);
         setCurrentUser(userRes.data.user);
       } catch {
         if (!active) return;
@@ -198,7 +229,7 @@ const AdminBookingDetail = () => {
       </div>
 
       <div className="admin-view-notice">
-        ℹ️ Chế độ xem Admin: Bạn có quyền xem chi tiết toàn bộ thông tin và bill của mọi giao dịch trong hệ thống.
+         Chế độ xem Admin: Bạn có quyền xem chi tiết toàn bộ thông tin và bill của mọi giao dịch trong hệ thống.
       </div>
 
       <table className="detail-table">
@@ -226,6 +257,17 @@ const AdminBookingDetail = () => {
           <tr><th>Tên ngân hàng</th><td data-label="Tên ngân hàng">{booking.customer_bank_name || '—'}</td></tr>
           <tr><th>Số tài khoản</th><td data-label="Số tài khoản" className="mono">{booking.customer_account_number || '—'}</td></tr>
           <tr><th>Tên chính chủ</th><td data-label="Tên chính chủ">{booking.customer_account_holder || '—'}</td></tr>
+          {booking.customer_bank_qr_image && (
+            <tr>
+              <th>QR ngân hàng</th>
+              <td data-label="QR ngân hàng">
+                <div className="proof-thumb-wrapper" onClick={() => setPreviewImageUrl(booking.customer_bank_qr_image)}>
+                  <img src={booking.customer_bank_qr_image} alt="QR ngân hàng" className="proof-thumb" />
+                  <span className="thumb-label">QR ngân hàng</span>
+                </div>
+              </td>
+            </tr>
+          )}
           <tr><th>Tiền khách chuyển</th><td data-label="Tiền khách chuyển">{formatMoney(booking.transfer_amount)}</td></tr>
           <tr><th>Phí</th><td data-label="Phí">{booking.fee_rate}% ({formatMoney(booking.fee_amount)})</td></tr>
           <tr><th>Thực nhận</th><td data-label="Thực nhận">{formatMoney(booking.net_amount)}</td></tr>
@@ -295,6 +337,29 @@ const AdminBookingDetail = () => {
                     </div>
                   ))
                 }
+                </div>
+              </td>
+            </tr>
+          )}
+          <tr>
+            <th>Kế toán chuyển lúc</th>
+            <td data-label="Kế toán chuyển lúc">
+              {booking.accountant_paid_at ? (
+                <span className="accountant-paid-time">{formatDateTime(booking.accountant_paid_at)}</span>
+              ) : '—'}
+            </td>
+          </tr>
+          {booking.accountant_proof_urls && booking.accountant_proof_urls.length > 0 && (
+            <tr>
+              <th>Ảnh bill kế toán chuyển</th>
+              <td data-label="Ảnh bill kế toán chuyển">
+                <div className="proof-images-grid">
+                  {booking.accountant_proof_urls.map((url, idx) => (
+                    <div key={idx} className="proof-thumb-wrapper accountant" onClick={() => setPreviewImageUrl(url)}>
+                      <img src={url} alt={`Accountant proof ${idx + 1}`} className="proof-thumb" />
+                      <span className="thumb-label">Bill kế toán {idx + 1}</span>
+                    </div>
+                  ))}
                 </div>
               </td>
             </tr>

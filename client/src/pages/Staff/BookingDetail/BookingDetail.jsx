@@ -201,6 +201,17 @@ const BookingDetail = () => {
           <tr><th>Tên ngân hàng</th><td>{booking.customer_bank_name || '—'}</td></tr>
           <tr><th>Số tài khoản</th><td className="mono">{booking.customer_account_number || '—'}</td></tr>
           <tr><th>Tên chính chủ</th><td>{booking.customer_account_holder || '—'}</td></tr>
+          {booking.customer_bank_qr_image && (
+            <tr>
+              <th>QR ngân hàng</th>
+              <td>
+                <div className="proof-thumb-wrapper" onClick={() => setPreviewImageUrl(booking.customer_bank_qr_image)}>
+                  <img src={booking.customer_bank_qr_image} alt="QR ngân hàng" className="proof-thumb" />
+                  <span className="thumb-label">QR ngân hàng</span>
+                </div>
+              </td>
+            </tr>
+          )}
           <tr><th>Tiền khách chuyển</th><td>{formatMoney(booking.transfer_amount)}</td></tr>
           <tr><th>Phí</th><td>{booking.fee_rate}% ({formatMoney(booking.fee_amount)})</td></tr>
           <tr><th>Thực nhận</th><td>{formatMoney(booking.net_amount)}</td></tr>
