@@ -20,7 +20,9 @@ const bookingFields = {
 
   // Tài chính
   transfer_amount: 'DECIMAL(15, 2) NOT NULL', // Tiền khách chuyển
-  fee_rate: 'DECIMAL(5, 2) NOT NULL', // Tỷ lệ phí (%)
+  base_fee_rate: 'DECIMAL(5, 2) NOT NULL DEFAULT 0', // Phí gốc (snapshot từ QR lúc tạo đơn)
+  base_fee_amount: 'DECIMAL(15, 2) NOT NULL DEFAULT 0', // Tiền phí gốc
+  fee_rate: 'DECIMAL(5, 2) NOT NULL', // Tỷ lệ phí (%) áp dụng cho khách
   fee_amount: 'DECIMAL(15, 2) NOT NULL', // Tiền phí
   net_amount: 'DECIMAL(15, 2) NOT NULL', // Thực nhận (transfer_amount - fee_amount)
 

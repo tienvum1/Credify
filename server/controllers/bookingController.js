@@ -76,7 +76,7 @@ const createBooking = async (req, res) => {
     }
 
     const [qrRows] = await pool.query(
-      "SELECT id, status, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, qr_image, name, creator_id FROM qrs WHERE id = ? LIMIT 1",
+      "SELECT id, status, max_amount_per_trans, fee_rate, fee_rate_l1, fee_rate_l2, fee_rate_l3, base_fee_rate, qr_image, name, creator_id FROM qrs WHERE id = ? LIMIT 1",
       [qr_id]
     );
     if (qrRows.length === 0)
@@ -114,6 +114,10 @@ const createBooking = async (req, res) => {
       : 0;
     const net_amount = roundMoney(transferAmountNumber - fee_amount);
 
+    // Phí gốc (snapshot từ QR)
+    const baseFeeRateVal = toNumber(qr.base_fee_rate) || 0;
+    const base_fee_amount = roundMoney((transferAmountNumber * baseFeeRateVal) / 100);
+
     const code = generateCode();
 
     const [result] = await pool.query(
@@ -122,8 +126,8 @@ const createBooking = async (req, res) => {
           code, qr_id, customer_id, staff_id, 
           customer_bank_name, customer_account_number, customer_account_holder, customer_bank_qr_image,
           admin_bank_name, admin_account_number, admin_account_holder, admin_bank_qr_image,
-          transfer_amount, fee_rate, fee_amount, net_amount, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
+          transfer_amount, base_fee_rate, base_fee_amount, fee_rate, fee_amount, net_amount, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
       `,
       [
         code,
@@ -139,6 +143,8 @@ const createBooking = async (req, res) => {
         adminBankInfo.holder,
         adminBankInfo.qr_image,
         transferAmountNumber,
+        baseFeeRateVal,
+        base_fee_amount,
         feeRate,
         fee_amount,
         net_amount,
@@ -583,8 +589,10 @@ const getStaffStats = async (req, res) => {
         COUNT(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN 1 END) as completed,
         COUNT(CASE WHEN b.status = 'rejected' THEN 1 END) as rejected,
         COUNT(CASE WHEN b.status = 'cancelled' THEN 1 END) as cancelled,
-        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.transfer_amount ELSE 0 END) as total_amount,
-        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.fee_amount ELSE 0 END) as total_fee
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.transfer_amount ELSE 0 END) as total_revenue,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN b.fee_amount ELSE 0 END) as total_fee,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN COALESCE(b.base_fee_amount, 0) ELSE 0 END) as total_base_fee,
+        SUM(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN (b.fee_amount - COALESCE(b.base_fee_amount, 0)) ELSE 0 END) as total_profit
       FROM bookings b
       LEFT JOIN users u ON u.id = b.customer_id
       JOIN qrs q ON q.id = b.qr_id
@@ -1069,7 +1077,8 @@ const accountantGetBookings = async (req, res) => {
         COUNT(*) as total,
         COUNT(CASE WHEN b.accountant_status = 'pending' THEN 1 END) as pending_count,
         COUNT(CASE WHEN b.accountant_status = 'paid' THEN 1 END) as completed_count,
-        SUM(CASE WHEN b.accountant_status = 'paid' THEN b.transfer_amount ELSE 0 END) as total_amount
+        SUM(CASE WHEN b.accountant_status = 'paid' THEN b.transfer_amount ELSE 0 END) as total_amount,
+        SUM(CASE WHEN b.accountant_status = 'paid' THEN COALESCE(b.base_fee_amount, 0) ELSE 0 END) as total_base_fee
       FROM bookings b 
       JOIN users u ON u.id = b.customer_id 
       ${whereSql}

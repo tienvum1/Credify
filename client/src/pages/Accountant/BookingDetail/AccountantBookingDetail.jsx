@@ -174,9 +174,19 @@ const AccountantBookingDetail = () => {
                   <span className="bdl">Chủ tài khoản</span>
                   <span className="bdv">{booking.admin_account_holder || '—'}</span>
                 </div>
+                <div className="bank-detail-row">
+                  <span className="bdl">Tiền khách chuyển</span>
+                  <span className="bdv">{formatMoney(booking.transfer_amount)}</span>
+                </div>
+                <div className="bank-detail-row">
+                  <span className="bdl">Phí gốc ({booking.base_fee_rate || 0}%)</span>
+                  <span className="bdv" style={{ color: '#ef4444' }}>- {formatMoney(booking.base_fee_amount || 0)}</span>
+                </div>
                 <div className="bank-detail-row total-row">
-                  <span className="bdl">Số tiền cần chuyển</span>
-                  <span className="bdv amount">{formatMoney(booking.net_amount)}</span>
+                  <span className="bdl">Số tiền cần chuyển cho admin</span>
+                  <span className="bdv amount">
+                    {formatMoney(Math.round(Number(booking.transfer_amount || 0) - Number(booking.base_fee_amount || 0)))}
+                  </span>
                 </div>
               </div>
             </div>

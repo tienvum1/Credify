@@ -20,6 +20,7 @@ const QRDetail = () => {
   const [selectedBankId, setSelectedBankId] = useState(null);
   const [selectedBankQrImage, setSelectedBankQrImage] = useState(null);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -64,7 +65,6 @@ const QRDetail = () => {
       .then((res) => {
         if (!active) return;
         setSavedBankAccounts(res.data.data);
-        // Tự động điền tài khoản mặc định
         const defaultBank = res.data.data.find(b => b.is_default);
         if (defaultBank) {
           setSelectedBankId(defaultBank.id);
@@ -76,43 +76,27 @@ const QRDetail = () => {
           setShowManualInput(true);
         }
       })
-      .catch((err) => {
-        console.error('Lỗi khi lấy danh sách ngân hàng:', err);
+      .catch(() => {
         setShowManualInput(true);
       });
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [id]);
 
   const computed = useMemo(() => {
     const amountNumber = Number(amount);
-    
-    // Tính phí dựa trên cấp độ người dùng
     let feeRateNumber = Number(qr?.fee_rate);
     const level = user?.level || 0;
     if (level === 1) feeRateNumber = Number(qr?.fee_rate_l1);
     else if (level === 2) feeRateNumber = Number(qr?.fee_rate_l2);
     else if (level === 3) feeRateNumber = Number(qr?.fee_rate_l3);
-    
     const maxAmountNumber = Number(qr?.max_amount_per_trans);
-
     const isAmountValid = Number.isFinite(amountNumber) && amountNumber > 0;
     const overLimit = isAmountValid && Number.isFinite(maxAmountNumber) && amountNumber > maxAmountNumber;
     const fee = isAmountValid && Number.isFinite(feeRateNumber) ? (amountNumber * feeRateNumber) / 100 : 0;
     const net = isAmountValid ? amountNumber - fee : 0;
-
-    return {
-      amountNumber,
-      feeRateNumber,
-      maxAmountNumber,
-      isAmountValid,
-      overLimit,
-      fee,
-      net,
-    };
-  }, [amount, qr]);
+    return { amountNumber, feeRateNumber, maxAmountNumber, isAmountValid, overLimit, fee, net };
+  }, [amount, qr, user]);
 
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
@@ -122,26 +106,11 @@ const QRDetail = () => {
 
   const handleCreateOrder = () => {
     if (!qr) return;
-    if (!bankName.trim()) {
-      setError('Vui lòng nhập tên ngân hàng');
-      return;
-    }
-    if (!bankAccountNumber.trim()) {
-      setError('Vui lòng nhập số tài khoản');
-      return;
-    }
-    if (!accountHolderName.trim()) {
-      setError('Vui lòng nhập tên chính chủ');
-      return;
-    }
-    if (!computed.isAmountValid) {
-      setError('Vui lòng nhập số tiền khách chuyển hợp lệ');
-      return;
-    }
-    if (computed.overLimit) {
-      setError('Số tiền vượt quá hạn mức của thẻ QR');
-      return;
-    }
+    if (!bankName.trim()) { setError('Vui lòng nhập tên ngân hàng'); return; }
+    if (!bankAccountNumber.trim()) { setError('Vui lòng nhập số tài khoản'); return; }
+    if (!accountHolderName.trim()) { setError('Vui lòng nhập tên chính chủ'); return; }
+    if (!computed.isAmountValid) { setError('Vui lòng nhập số tiền khách chuyển hợp lệ'); return; }
+    if (computed.overLimit) { setError('Số tiền vượt quá hạn mức của thẻ QR'); return; }
 
     setError('');
     setSubmittingCreate(true);
@@ -153,22 +122,12 @@ const QRDetail = () => {
       customer_bank_qr_image: selectedBankQrImage || null,
       transfer_amount: computed.amountNumber
     })
-      .then((res) => {
-        navigate(`/payment/${res.data.booking.id}`);
-      })
-      .catch((err) => {
-        setError(err.response?.data?.message || 'Không thể tạo đơn hàng');
-      })
+      .then((res) => { navigate(`/payment/${res.data.booking.id}`); })
+      .catch((err) => { setError(err.response?.data?.message || 'Không thể tạo đơn hàng'); })
       .finally(() => setSubmittingCreate(false));
   };
 
-  if (loading) {
-    return (
-      <div className="qr-detail-loading">
-        Đang tải...
-      </div>
-    );
-  }
+  if (loading) return <div className="qr-detail-loading">Đang tải...</div>;
 
   if (!qr) {
     return (
@@ -180,6 +139,13 @@ const QRDetail = () => {
     );
   }
 
+  // Phí áp dụng cho user hiện tại
+  const level = user?.level || 0;
+  let myFeeRate = Number(qr.fee_rate);
+  if (level === 1) myFeeRate = Number(qr.fee_rate_l1);
+  else if (level === 2) myFeeRate = Number(qr.fee_rate_l2);
+  else if (level === 3) myFeeRate = Number(qr.fee_rate_l3);
+
   return (
     <div className="qr-detail-page">
       <div className="qr-detail-top">
@@ -189,7 +155,44 @@ const QRDetail = () => {
         </div>
       </div>
 
-      <div className="qr-detail-grid">
+      {/* ── Layout 50/50: QR info bên trái, form tạo đơn bên phải ── */}
+      <div className="qr-main-layout">
+
+        {/* ── Thông tin QR ── */}
+        <div className="qr-info-card">
+          <div className="qr-info-images">
+            {qr.qr_image && (
+              <div className="qr-info-img-wrap" onClick={() => setLightbox(qr.qr_image)}>
+                <img src={qr.qr_image} alt="Mã QR" />
+                <span className="img-label">Quét để thanh toán</span>
+              </div>
+            )}
+          </div>
+
+          <div className="qr-info-details">
+            <h2 className="qr-info-name">{qr.name || `QR #${qr.id}`}</h2>
+
+            <div className="qr-info-rows">
+              <div className="qr-info-row">
+                <span className="qr-info-label">Hạn mức / lần</span>
+                <span className="qr-info-value highlight">{formatMoney(qr.max_amount_per_trans)}</span>
+              </div>
+              <div className="qr-info-row">
+                <span className="qr-info-label">Phí áp dụng</span>
+                <span className="qr-info-value fee">{myFeeRate}%</span>
+              </div>
+              {qr.note && (
+                <div className="qr-info-row note-row">
+                  <span className="qr-info-label">Ghi chú</span>
+                  <span className="qr-info-value note">{qr.note}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Form tạo đơn ── */}
+        <div className="qr-detail-grid">
         <section className="order-panel">
           <h1>Tạo đơn</h1>
           <div className="order-form">
@@ -198,8 +201,8 @@ const QRDetail = () => {
                 <span className="section-label">Chọn tài khoản nhận tiền</span>
                 <div className="bank-cards-list">
                   {savedBankAccounts.map((bank) => (
-                    <div 
-                      key={bank.id} 
+                    <div
+                      key={bank.id}
                       className={`bank-card-item ${selectedBankId === bank.id ? 'active' : ''}`}
                       onClick={() => {
                         setSelectedBankId(bank.id);
@@ -224,7 +227,7 @@ const QRDetail = () => {
                       )}
                     </div>
                   ))}
-                  <div 
+                  <div
                     className={`bank-card-item manual-card ${showManualInput ? 'active' : ''}`}
                     onClick={() => {
                       setSelectedBankId(null);
@@ -248,36 +251,17 @@ const QRDetail = () => {
               <div className="manual-fields-group">
                 <label className="field">
                   <span>Ngân hàng</span>
-                  <input
-                    type="text"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="Ví dụ: Vietcombank"
-                  />
+                  <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Ví dụ: Vietcombank" />
                 </label>
-
                 <label className="field">
                   <span>Số tài khoản</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={bankAccountNumber}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, ''); // Chỉ giữ lại số
-                      setBankAccountNumber(val);
-                    }}
-                    placeholder="Nhập số tài khoản"
-                  />
+                  <input type="text" inputMode="numeric" value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Nhập số tài khoản" />
                 </label>
-
                 <label className="field">
                   <span>Tên chính chủ</span>
-                  <input
-                    type="text"
-                    value={accountHolderName}
-                    onChange={(e) => setAccountHolderName(e.target.value)}
-                    placeholder="Nhập tên chính chủ"
-                  />
+                  <input type="text" value={accountHolderName} onChange={(e) => setAccountHolderName(e.target.value)} placeholder="Nhập tên chính chủ" />
                 </label>
               </div>
             )}
@@ -296,9 +280,10 @@ const QRDetail = () => {
                 placeholder="Nhập số tiền (VNĐ)"
               />
             </label>
+
             {Number.isFinite(computed.maxAmountNumber) && (
               <div className="order-hint">
-                Giới hạn chuyển 1 lần của QR này là {Math.round(computed.maxAmountNumber).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} VNĐ.
+                Giới hạn chuyển 1 lần: {Math.round(computed.maxAmountNumber).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} VNĐ
               </div>
             )}
 
@@ -312,12 +297,6 @@ const QRDetail = () => {
                 <span>{formatMoney(computed.net)}</span>
               </div>
             </div>
-            {computed.isAmountValid && Number.isFinite(computed.feeRateNumber) && (
-              <div className="order-hint">
-                Ví dụ: chuyển {Math.round(computed.amountNumber).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} VNĐ, phí {computed.feeRateNumber}% thì thực nhận{' '}
-                {Math.round(computed.amountNumber - computed.fee).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} VNĐ.
-              </div>
-            )}
 
             {error && <div className="order-error">{error}</div>}
 
@@ -325,19 +304,30 @@ const QRDetail = () => {
               <div className="warning-title">⚠️ Lưu ý quan trọng:</div>
               <ul className="warning-list">
                 <li>Chỉ thanh toán trong hạn mức của thẻ. Nếu quẹt vượt hạn mức, giao dịch có thể bị <strong>hold (giữ tiền)</strong>.</li>
-                <li>Nên chuyển số tiền lẻ (ví dụ: 1.250.000 VNĐ – số tiền có hàng nghìn) để dễ xử lý.</li>
-                <li>Sử dụng thẻ thuộc ngân hàng được hỗ trợ.</li>
+                <li>Nên chuyển số tiền lẻ (ví dụ: 1.250.000 VNĐ) để dễ xử lý.</li>
                 <li>Sau khi thanh toán, chụp lại màn hình giao dịch thành công để làm bằng chứng.</li>
                 <li>Hãy chuyển <strong>đúng chính xác</strong> số tiền để đơn hàng được duyệt nhanh chóng.</li>
               </ul>
             </div>
 
             <button type="button" className="create-btn" onClick={handleCreateOrder} disabled={submittingCreate}>
-              Tạo đơn
+              {submittingCreate ? 'Đang tạo...' : 'Tạo đơn'}
             </button>
           </div>
         </section>
       </div>
+
+      </div>{/* end qr-main-layout */}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="qr-lightbox" onClick={() => setLightbox(null)}>
+          <div className="qr-lightbox-inner" onClick={e => e.stopPropagation()}>
+            <button className="qr-lightbox-close" onClick={() => setLightbox(null)}>×</button>
+            <img src={lightbox} alt="Preview" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

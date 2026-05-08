@@ -81,8 +81,9 @@ const RevenueReport = () => {
 
   const totalRevenue   = Number(summary.total_amount   || 0);
   const totalFee       = Number(summary.total_fee      || 0);
+  const totalBaseFee   = Number(summary.total_base_fee || 0);
+  const totalProfit    = Number(summary.total_profit   || 0);
   const totalOrders    = Number(summary.completed_count|| 0);
-
   const periodLabel     = reportType === 'day' ? 'Hôm nay' : reportType === 'month' ? 'Tháng này' : 'Năm nay';
   const fullPeriodLabel = reportType === 'day' ? 'Tháng này' : reportType === 'month' ? 'Năm này' : 'Toàn thời gian';
   const groupLabel      = reportType === 'day' ? 'ngày' : reportType === 'month' ? 'tháng' : 'năm';
@@ -98,23 +99,41 @@ const RevenueReport = () => {
     total_fee:        acc.total_fee        + Number(r.total_fee        || 0),
   }), { total_count:0, completed_count:0, processing_count:0, rejected_count:0, cancelled_count:0, total_amount:0, total_fee:0 });
 
+  const reversedTotal = [...sectionData.total].reverse();
+
   const chartData = {
-    labels: [...sectionData.total].reverse().map(r => fmtDate(r.label)),
+    labels: reversedTotal.map(r => fmtDate(r.label)),
     datasets: [
       {
         label: 'Doanh thu (đ)',
-        data: [...sectionData.total].reverse().map(r => Number(r.total_amount || 0)),
+        data: reversedTotal.map(r => Number(r.total_amount || 0)),
         backgroundColor: isAdminPath ? 'rgba(99,102,241,0.8)' : 'rgba(16,185,129,0.8)',
-        borderRadius: 8,
-        barThickness: 28,
+        borderRadius: 6,
+        barThickness: isAdminPath ? 18 : 28,
       },
       {
-        label: 'Phí thu (đ)',
-        data: [...sectionData.total].reverse().map(r => Number(r.total_fee || 0)),
+        label: 'Phí khách chịu (đ)',
+        data: reversedTotal.map(r => Number(r.total_fee || 0)),
         backgroundColor: 'rgba(244,63,94,0.8)',
-        borderRadius: 8,
-        barThickness: 28,
+        borderRadius: 6,
+        barThickness: isAdminPath ? 18 : 28,
       },
+      ...(isAdminPath ? [
+        {
+          label: 'Phí gốc (đ)',
+          data: reversedTotal.map(r => Number(r.total_base_fee || 0)),
+          backgroundColor: 'rgba(234,88,12,0.8)',
+          borderRadius: 6,
+          barThickness: 18,
+        },
+        {
+          label: 'Lợi nhuận (đ)',
+          data: reversedTotal.map(r => Number(r.total_profit || 0)),
+          backgroundColor: 'rgba(22,163,74,0.85)',
+          borderRadius: 6,
+          barThickness: 18,
+        },
+      ] : []),
     ],
   };
 
@@ -122,17 +141,35 @@ const RevenueReport = () => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 12 } } },
+      legend: {
+        position: 'bottom',
+        labels: { usePointStyle: true, padding: 20, font: { size: 12 } },
+      },
       tooltip: {
         callbacks: {
-          label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} đ`
-        }
-      }
+          label: (ctx) => {
+            const val = ctx.parsed.y.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return ` ${ctx.dataset.label}: ${val} đ`;
+          },
+        },
+      },
     },
     scales: {
-      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, color: '#64748b' } },
-      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#64748b' } }
-    }
+      y: {
+        beginAtZero: true,
+        grid: { color: '#f1f5f9' },
+        ticks: {
+          font: { size: 11 },
+          color: '#64748b',
+          callback: (val) => {
+            if (val >= 1_000_000) return (val / 1_000_000).toLocaleString('vi') + 'tr';
+            if (val >= 1_000) return (val / 1_000).toLocaleString('vi') + 'k';
+            return val;
+          },
+        },
+      },
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#64748b' } },
+    },
   };
 
   return (
@@ -140,7 +177,7 @@ const RevenueReport = () => {
       {/* Header */}
       <div className="report-header centered">
         <div className="header-top">
-          <h1>{isAdminPath ? 'Thống kê hệ thống' : 'Báo cáo doanh thu'}</h1>
+          <h1>{isAdminPath ? 'Thống kê hệ thống' : 'Báo cáo doanh thu cá nhân'}</h1>
           <p className="subtitle">{isAdminPath ? 'Toàn cảnh hoạt động kinh doanh' : 'Theo dõi và phân tích hiệu suất'}</p>
         </div>
       </div>
@@ -174,10 +211,26 @@ const RevenueReport = () => {
             </div>
             <div className="stat-card fee">
               <div className="stat-info">
-                <span className="label">Tổng phí thu về ({periodLabel})</span>
+                <span className="label">Tổng phí khách chịu ({periodLabel})</span>
                 <p className="value">{fmtShort(totalFee)} <small>đ</small></p>
               </div>
             </div>
+            {isAdminPath && (
+              <div className="stat-card base-fee">
+                <div className="stat-info">
+                  <span className="label">Tổng phí gốc ({periodLabel})</span>
+                  <p className="value">{fmtShort(totalBaseFee)} <small>đ</small></p>
+                </div>
+              </div>
+            )}
+            {isAdminPath && (
+              <div className="stat-card profit">
+                <div className="stat-info">
+                  <span className="label">Lợi nhuận ({periodLabel})</span>
+                  <p className="value">{fmtShort(totalProfit)} <small>đ</small></p>
+                </div>
+              </div>
+            )}
             <div className="stat-card orders">
               <div className="stat-info">
                 <span className="label">Đơn hoàn thành ({periodLabel})</span>
@@ -205,7 +258,9 @@ const RevenueReport = () => {
                     <th className="text-center text-danger">Từ chối</th>
                     <th className="text-center text-muted">Đã hủy</th>
                     <th className="text-right text-revenue">Doanh thu</th>
-                    <th className="text-right text-fee">Phí thu</th>
+                    <th className="text-right text-fee">Phí khách</th>
+                    {isAdminPath && <th className="text-right" style={{color:'#ea580c'}}>Phí gốc</th>}
+                    {isAdminPath && <th className="text-right" style={{color:'#16a34a'}}>Lợi nhuận</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -221,6 +276,8 @@ const RevenueReport = () => {
                       <td className="text-center text-muted">{Number(item.cancelled_count).toLocaleString()}</td>
                       <td className="text-right text-revenue font-bold">{fmt(item.total_amount)}</td>
                       <td className="text-right text-fee">{fmt(item.total_fee)}</td>
+                      {isAdminPath && <td className="text-right" style={{color:'#ea580c'}}>{fmt(item.total_base_fee)}</td>}
+                      {isAdminPath && <td className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(item.total_profit)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -235,6 +292,8 @@ const RevenueReport = () => {
                       <td className="text-center text-muted"><strong>{totalRow.cancelled_count.toLocaleString()}</strong></td>
                       <td className="text-right text-revenue"><strong>{fmt(totalRow.total_amount)}</strong></td>
                       <td className="text-right text-fee"><strong>{fmt(totalRow.total_fee)}</strong></td>
+                      {isAdminPath && <td className="text-right" style={{color:'#ea580c'}}><strong>{fmt(sectionData.total.reduce((a,r)=>a+Number(r.total_base_fee||0),0))}</strong></td>}
+                      {isAdminPath && <td className="text-right" style={{color:'#16a34a'}}><strong>{fmt(sectionData.total.reduce((a,r)=>a+Number(r.total_profit||0),0))}</strong></td>}
                     </tr>
                   </tfoot>
                 )}
@@ -274,7 +333,9 @@ const RevenueReport = () => {
                       <th className="text-center text-success">Hoàn thành</th>
                       <th className="text-center text-danger">Hủy/Từ chối</th>
                       <th className="text-right text-revenue">Doanh thu</th>
-                      <th className="text-right text-fee">Phí thu</th>
+                      <th className="text-right text-fee">Phí khách</th>
+                      <th className="text-right" style={{color:'#ea580c'}}>Phí gốc</th>
+                      <th className="text-right" style={{color:'#16a34a'}}>Lợi nhuận</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -292,6 +353,8 @@ const RevenueReport = () => {
                         <td className="text-center text-danger">{(Number(s.cancelled_count) + Number(s.rejected_count)).toLocaleString()}</td>
                         <td className="text-right text-revenue font-bold">{fmt(s.total_amount)}</td>
                         <td className="text-right text-fee">{fmt(s.total_fee)}</td>
+                        <td className="text-right" style={{color:'#ea580c'}}>{fmt(s.total_base_fee)}</td>
+                        <td className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(s.total_profit)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -324,12 +387,14 @@ const RevenueReport = () => {
                     <th className="text-center text-success">Hoàn thành</th>
                     <th className="text-center text-danger">Hủy/Từ chối</th>
                     <th className="text-right text-revenue">Doanh thu</th>
-                    <th className="text-right text-fee">Phí thu</th>
+                    <th className="text-right text-fee">Phí khách</th>
+                    {isAdminPath && <th className="text-right" style={{color:'#ea580c'}}>Phí gốc</th>}
+                    {isAdminPath && <th className="text-right" style={{color:'#16a34a'}}>Lợi nhuận</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {sectionData.byQr.length === 0 ? (
-                    <tr><td colSpan={7} className="empty-state">Chưa có dữ liệu giao dịch trong kỳ này</td></tr>
+                    <tr><td colSpan={isAdminPath ? 9 : 7} className="empty-state">Chưa có dữ liệu giao dịch trong kỳ này</td></tr>
                   ) : sectionData.byQr.map((qr, idx) => (
                     <tr key={idx}>
                       <td><strong>{fmtDate(qr.label)}</strong></td>
@@ -347,6 +412,8 @@ const RevenueReport = () => {
                       <td className="text-center text-danger">{(Number(qr.cancelled_count) + Number(qr.rejected_count)).toLocaleString()}</td>
                       <td className="text-right text-revenue font-bold">{fmt(qr.total_amount)}</td>
                       <td className="text-right text-fee">{fmt(qr.total_fee)}</td>
+                      {isAdminPath && <td className="text-right" style={{color:'#ea580c'}}>{fmt(qr.total_base_fee)}</td>}
+                      {isAdminPath && <td className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(qr.total_profit)}</td>}
                     </tr>
                   ))}
                 </tbody>

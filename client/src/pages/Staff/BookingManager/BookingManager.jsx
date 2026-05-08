@@ -17,7 +17,10 @@ const BookingManager = () => {
     pending_claim: 0,
     processing: 0,
     completed: 0,
-    rejected: 0
+    rejected: 0,
+    cancelled: 0,
+    total_revenue: 0,
+    total_fee: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -232,8 +235,8 @@ const BookingManager = () => {
         <div className="stat-card amount">
           <div className="stat-icon"><BarChart3 size={24} /></div>
           <div className="stat-info">
-            <span className="stat-label">Tổng tiền</span>
-            <span className="stat-value">{formatMoney(stats.total_amount)}</span>
+            <span className="stat-label">Tổng tiền chuyển</span>
+            <span className="stat-value">{formatMoney(stats.total_revenue)}</span>
           </div>
         </div>
         <div className="stat-card fee">

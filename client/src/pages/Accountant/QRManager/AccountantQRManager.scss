@@ -315,7 +315,7 @@ $radius-btn: 10px;
             transition: all 0.2s;
 
             &:hover {
-                background: darken($primary, 8%);
+                background: #3730a3;
                 transform: translateY(-1px);
                 box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
             }
@@ -445,7 +445,7 @@ $radius-btn: 10px;
             transition: all 0.2s;
 
             &:hover:not(:disabled) {
-                background: darken($primary, 8%);
+                background: #3730a3;
                 transform: translateY(-1px);
                 box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
             }

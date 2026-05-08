@@ -271,8 +271,26 @@ const AdminBookingDetail = () => {
             </tr>
           )}
           <tr><th>Tiền khách chuyển</th><td data-label="Tiền khách chuyển">{formatMoney(booking.transfer_amount)}</td></tr>
-          <tr><th>Phí</th><td data-label="Phí">{booking.fee_rate}% ({formatMoney(booking.fee_amount)})</td></tr>
-          <tr><th>Thực nhận</th><td data-label="Thực nhận">{formatMoney(booking.net_amount)}</td></tr>
+          <tr><th>Phí gốc</th><td data-label="Phí gốc">{booking.base_fee_rate || 0}% ({formatMoney(booking.base_fee_amount || 0)})</td></tr>
+          <tr>
+            <th>Admin thực nhận</th>
+            <td data-label="Admin thực nhận" style={{ color: '#7c3aed', fontWeight: 700 }}>
+              {formatMoney((Number(booking.transfer_amount) || 0) - (Number(booking.base_fee_amount) || 0))}
+            </td>
+          </tr>
+          <tr><th>Phí khách chịu</th><td data-label="Phí khách chịu">{booking.fee_rate}% ({formatMoney(booking.fee_amount)})</td></tr>
+          <tr>
+            <th>Khách thực nhận</th>
+            <td data-label="Khách thực nhận" style={{ color: '#2563eb', fontWeight: 700 }}>
+              {formatMoney((Number(booking.transfer_amount) || 0) - (Number(booking.fee_amount) || 0))}
+            </td>
+          </tr>
+          <tr>
+            <th>Lợi nhuận</th>
+            <td data-label="Lợi nhuận" style={{ color: '#16a34a', fontWeight: 700 }}>
+              {formatMoney((Number(booking.fee_amount) || 0) - (Number(booking.base_fee_amount) || 0))}
+            </td>
+          </tr>
           <tr><th>Ghi chú khách</th><td data-label="Ghi chú khách">{booking.customer_paid_note || '—'}</td></tr>
           <tr><th>Lý do từ chối</th><td data-label="Lý do từ chối">{booking.reject_note || '—'}</td></tr>
           <tr><th>Tạo lúc</th><td data-label="Tạo lúc">{formatDateTime(booking.created_at)}</td></tr>

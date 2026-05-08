@@ -18,6 +18,181 @@
   margin-bottom: 4px;
 }
 
+// ── QR Info Card ──────────────────────────────────────────────────────────────
+.qr-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qr-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  .qr-info-images {
+    display: flex;
+    justify-content: center;
+
+    .qr-info-img-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      width: 100%;
+
+      img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        transition: box-shadow 0.2s;
+
+        &:hover {
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+      }
+
+      .img-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+    }
+  }
+
+  .qr-info-details {
+    flex: 1;
+    min-width: 0;
+
+    .qr-info-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 16px;
+    }
+
+    .qr-info-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+
+      .qr-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        gap: 12px;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &.note-row {
+          align-items: flex-start;
+        }
+
+        .qr-info-label {
+          font-size: 13px;
+          color: #64748b;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .qr-info-value {
+          font-size: 14px;
+          font-weight: 700;
+          color: #0f172a;
+          text-align: right;
+
+          &.highlight {
+            font-size: 16px;
+            color: #4f46e5;
+          }
+
+          &.fee {
+            color: #16a34a;
+            font-size: 15px;
+          }
+
+          &.note {
+            color: #475569;
+            font-weight: 500;
+            font-size: 13px;
+            text-align: right;
+            line-height: 1.5;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+.qr-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+
+  .qr-lightbox-inner {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+
+    img {
+      display: block;
+      max-width: 100%;
+      max-height: 85vh;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+
+    .qr-lightbox-close {
+      position: absolute;
+      top: -14px;
+      right: -14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: white;
+      border: none;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+      &:hover {
+        background: #f1f5f9;
+      }
+    }
+  }
+}
+
 .qr-detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 680px);

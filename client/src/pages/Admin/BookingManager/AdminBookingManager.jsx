@@ -15,7 +15,7 @@ const AdminBookingManager = () => {
   const [stats, setStats] = useState({
     total: 0, pending_claim: 0, processing: 0,
     completed: 0, rejected: 0, cancelled: 0,
-    total_amount: 0, total_fee: 0
+    total_revenue: 0, total_fee: 0, total_base_fee: 0, total_profit: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -209,15 +209,29 @@ const AdminBookingManager = () => {
         <div className="stat-card amount">
           <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
-            <span className="stat-label">Tổng tiền</span>
-            <span className="stat-value">{formatMoney(stats.total_amount)}</span>
+            <span className="stat-label">Tổng doanh thu</span>
+            <span className="stat-value">{formatMoney(stats.total_revenue)}</span>
           </div>
         </div>
         <div className="stat-card fee">
           <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
-            <span className="stat-label">Tổng phí</span>
+            <span className="stat-label">Tổng phí khách chịu</span>
             <span className="stat-value">{formatMoney(stats.total_fee)}</span>
+          </div>
+        </div>
+        <div className="stat-card base-fee">
+          <div className="stat-icon"><BarChart3 size={20} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Tổng phí gốc</span>
+            <span className="stat-value">{formatMoney(stats.total_base_fee)}</span>
+          </div>
+        </div>
+        <div className="stat-card profit">
+          <div className="stat-icon"><BarChart3 size={20} /></div>
+          <div className="stat-info">
+            <span className="stat-label">Lợi nhuận</span>
+            <span className="stat-value">{formatMoney(stats.total_profit)}</span>
           </div>
         </div>
       </div>

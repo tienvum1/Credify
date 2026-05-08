@@ -19,6 +19,7 @@ const StaffQRManager = () => {
   const [qrName, setQrName] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [feeRate, setFeeRate] = useState('');
+  const [baseFeeRate, setBaseFeeRate] = useState('');
   const [feeRateL1, setFeeRateL1] = useState('');
   const [feeRateL2, setFeeRateL2] = useState('');
   const [feeRateL3, setFeeRateL3] = useState('');
@@ -54,6 +55,7 @@ const StaffQRManager = () => {
     setQrName('');
     setMaxAmount('');
     setFeeRate('');
+    setBaseFeeRate('');
     setFeeRateL1('');
     setFeeRateL2('');
     setFeeRateL3('');
@@ -67,6 +69,7 @@ const StaffQRManager = () => {
     setQrName(qr.name || '');
     setMaxAmount(qr.max_amount_per_trans ? Math.round(qr.max_amount_per_trans).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
     setFeeRate(qr.fee_rate);
+    setBaseFeeRate(qr.base_fee_rate || '');
     setFeeRateL1(qr.fee_rate_l1 || '');
     setFeeRateL2(qr.fee_rate_l2 || '');
     setFeeRateL3(qr.fee_rate_l3 || '');
@@ -99,6 +102,7 @@ const StaffQRManager = () => {
     formData.append('max_amount_per_trans', cleanMaxAmount);
     
     formData.append('fee_rate', feeRate);
+    formData.append('base_fee_rate', baseFeeRate);
     formData.append('fee_rate_l1', feeRateL1);
     formData.append('fee_rate_l2', feeRateL2);
     formData.append('fee_rate_l3', feeRateL3);
@@ -204,6 +208,7 @@ const StaffQRManager = () => {
               <th className="th-img">Ảnh đại diện</th>
               <th className="th-img">Ảnh QR</th>
               <th className="th-money">Hạn mức</th>
+              <th className="th-fee">Phí gốc</th>
               <th className="th-fee">Phí Def</th>
               <th className="th-fee">Phí L1</th>
               <th className="th-fee">Phí L2</th>
@@ -259,6 +264,9 @@ const StaffQRManager = () => {
                     </td>
                     <td data-label="Hạn mức" className="td-money">
                       <span className="money-value">{formatMoney(qr.max_amount_per_trans)}</span>
+                    </td>
+                    <td data-label="Phí gốc" className="td-fee">
+                      <span className="fee-badge base">{qr.base_fee_rate || 0}%</span>
                     </td>
                     <td data-label="Phí Def" className="td-fee">
                       <span className="fee-badge def">{qr.fee_rate}%</span>
@@ -361,6 +369,10 @@ const StaffQRManager = () => {
               <div className="form-group">
                 <label>Tỷ lệ phí mặc định (%):</label>
                 <input type="number" step="0.01" value={feeRate} onChange={(e) => setFeeRate(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Phí gốc (%):</label>
+                <input type="number" step="0.01" value={baseFeeRate} onChange={(e) => setBaseFeeRate(e.target.value)} placeholder="Phí thực tế ngân hàng thu" />
               </div>
               <div className="fee-levels-grid">
                 <div className="form-group">

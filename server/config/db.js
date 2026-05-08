@@ -11,13 +11,11 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   timezone: '+00:00',
-  // Thêm các cấu hình để tránh ECONNRESET
   enableKeepAlive: true,
-  keepAliveInitialDelay: 10000, // 10 giây
+  keepAliveInitialDelay: 10000,
   connectTimeout: 10000,
 });
 
-// Lắng nghe lỗi trên pool để tránh crash app khi có lỗi fatal
 pool.on('error', (err) => {
   console.error('Lỗi Database Pool:', err);
   if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
@@ -30,7 +28,8 @@ pool.on('error', (err) => {
 const initDB = async () => {
   try {
     const connection = await pool.getConnection();
-    // Tạo bảng users tối ưu
+
+    // ── 1. Tạo bảng users ────────────────────────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,73 +50,28 @@ const initDB = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Kiểm tra và thêm cột status nếu chưa tồn tại (Migration)
-    const [columns] = await connection.query("SHOW COLUMNS FROM users LIKE 'status'");
-    if (columns.length === 0) {
-      console.log('Đang thêm cột status vào bảng users...');
-      await connection.query("ALTER TABLE users ADD COLUMN status ENUM('active', 'locked') DEFAULT 'active' AFTER role");
-    }
+    // ── 2. Tạo bảng qrs ──────────────────────────────────────────────────────
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS qrs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NULL,
+        main_image VARCHAR(255) NULL,
+        qr_image VARCHAR(255) NULL,
+        fee_rate DECIMAL(5,2) DEFAULT 0,
+        fee_rate_l1 DECIMAL(5,2) DEFAULT 0,
+        fee_rate_l2 DECIMAL(5,2) DEFAULT 0,
+        fee_rate_l3 DECIMAL(5,2) DEFAULT 0,
+        max_amount_per_trans DECIMAL(15,2) NULL,
+        status ENUM('ready', 'maintenance') DEFAULT 'ready',
+        accountant_editable TINYINT(1) DEFAULT 0,
+        note TEXT NULL,
+        creator_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
 
-    // Kiểm tra và thêm cột level nếu chưa tồn tại
-    const [levelColumns] = await connection.query("SHOW COLUMNS FROM users LIKE 'level'");
-    if (levelColumns.length === 0) {
-      console.log('Đang thêm cột level vào bảng users...');
-      await connection.query("ALTER TABLE users ADD COLUMN level TINYINT DEFAULT 1 AFTER role");
-    }
-
-    // Kiểm tra và thêm các cột mới cho bookings (admin bank info & accountant proof)
-    const [bookingCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'admin_bank_name'");
-    if (bookingCols.length === 0) {
-      console.log('Đang nâng cấp bảng bookings...');
-      await connection.query("ALTER TABLE bookings ADD COLUMN admin_bank_name VARCHAR(120) NULL AFTER customer_account_holder");
-      await connection.query("ALTER TABLE bookings ADD COLUMN admin_account_number VARCHAR(60) NULL AFTER admin_bank_name");
-      await connection.query("ALTER TABLE bookings ADD COLUMN admin_account_holder VARCHAR(255) NULL AFTER admin_account_number");
-      await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_url VARCHAR(255) NULL AFTER customer_paid_proof_url");
-      await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_at TIMESTAMP NULL AFTER confirmed_at");
-      await connection.query("ALTER TABLE bookings MODIFY COLUMN status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
-    } else {
-      // Đảm bảo enum status luôn đúng kể cả khi đã có cột
-      await connection.query("ALTER TABLE bookings MODIFY COLUMN status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
-    }
-
-    // Thêm cột accountant_paid_proof_urls (JSON) để lưu nhiều ảnh
-    const [accProofCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'accountant_paid_proof_urls'");
-    if (accProofCols.length === 0) {
-      console.log('Đang thêm cột accountant_paid_proof_urls vào bảng bookings...');
-      await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_urls JSON NULL AFTER accountant_paid_proof_url");
-    }
-
-    // Migration: thêm cột name vào bảng qrs nếu chưa có
-    try {
-      const [qrNameCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'name'");
-      if (qrNameCols.length === 0) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN name VARCHAR(255) NULL AFTER id");
-        console.log('Đã thêm cột name vào bảng qrs');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột name vào qrs:', err.message);
-    }
-
-    // Kiểm tra và thêm cột main_image, qr_image vào bảng qrs nếu chưa tồn tại
-    const [qrMainCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'main_image'");
-    if (qrMainCols.length === 0) {
-      console.log('Đang thêm cột main_image vào bảng qrs...');
-      await connection.query("ALTER TABLE qrs ADD COLUMN main_image VARCHAR(255) AFTER id");
-    }
-    const [qrImageCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'qr_image'");
-    if (qrImageCols.length === 0) {
-      console.log('Đang thêm cột qr_image vào bảng qrs...');
-      await connection.query("ALTER TABLE qrs ADD COLUMN qr_image VARCHAR(255) AFTER main_image");
-    }
-
-    // Xử lý cột image_url cũ (Xóa hoặc cho phép NULL để tránh lỗi)
-    const [oldQrCol] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'image_url'");
-    if (oldQrCol.length > 0) {
-      console.log('Đang xóa cột image_url cũ trong bảng qrs...');
-      await connection.query("ALTER TABLE qrs DROP COLUMN image_url");
-    }
-
-    // Tạo bảng credit_cards (Phiên bản quản lý độc lập)
+    // ── 3. Tạo bảng credit_cards ─────────────────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS credit_cards (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -136,26 +90,41 @@ const initDB = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_cc_status (status),
         INDEX idx_cc_created (created_at)
-      )
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Tạo bảng bookings (Tối ưu hóa Index)
+    // ── 4. Tạo bảng bookings ─────────────────────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        customer_id INT NOT NULL,
+        code VARCHAR(50) NOT NULL UNIQUE,
         qr_id INT NOT NULL,
+        customer_id INT NOT NULL,
         staff_id INT DEFAULT NULL,
-        code VARCHAR(50) NOT NULL,
+        customer_bank_name VARCHAR(120) NOT NULL,
+        customer_account_number VARCHAR(60) NOT NULL,
+        customer_account_holder VARCHAR(255) NOT NULL,
+        customer_bank_qr_image VARCHAR(500) NULL,
+        admin_bank_name VARCHAR(120) NULL,
+        admin_account_number VARCHAR(60) NULL,
+        admin_account_holder VARCHAR(255) NULL,
+        admin_bank_qr_image VARCHAR(500) NULL,
         transfer_amount DECIMAL(15, 2) NOT NULL,
         fee_rate DECIMAL(5, 2) NOT NULL,
         fee_amount DECIMAL(15, 2) NOT NULL,
         net_amount DECIMAL(15, 2) NOT NULL,
-        status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') DEFAULT 'created',
-        customer_paid_proof_urls TEXT,
-        customer_paid_note TEXT,
-        staff_paid_proof_urls TEXT,
-        reject_note TEXT,
+        customer_paid_proof_url VARCHAR(255) NULL,
+        customer_paid_proof_urls JSON NULL,
+        customer_id_card_urls JSON NULL,
+        customer_paid_note TEXT NULL,
+        staff_paid_proof_urls JSON NULL,
+        accountant_paid_proof_url VARCHAR(255) NULL,
+        accountant_paid_proof_urls JSON NULL,
+        accountant_paid_at TIMESTAMP NULL,
+        status ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'created',
+        is_valid ENUM('yes', 'no') NULL,
+        accountant_status ENUM('pending', 'paid', 'rejected') NULL,
+        reject_note TEXT NULL,
         paid_at TIMESTAMP NULL,
         confirmed_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -166,10 +135,10 @@ const initDB = async () => {
         INDEX idx_booking_status (status),
         INDEX idx_booking_customer (customer_id),
         INDEX idx_booking_created (created_at)
-      )
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Tạo bảng notifications (thông báo)
+    // ── 5. Tạo bảng notifications ────────────────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -183,10 +152,10 @@ const initDB = async () => {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
         INDEX idx_notifications_user (user_id, created_at)
-      )
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Tạo bảng payment_history (Bonus)
+    // ── 6. Tạo bảng payment_history ──────────────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS payment_history (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -196,10 +165,10 @@ const initDB = async () => {
         note TEXT,
         FOREIGN KEY (card_id) REFERENCES credit_cards(id) ON DELETE CASCADE,
         INDEX idx_payment_card (card_id)
-      )
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Tạo bảng bank_accounts
+    // ── 7. Tạo bảng bank_accounts ────────────────────────────────────────────
     await connection.query(`
       CREATE TABLE IF NOT EXISTS bank_accounts (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -216,246 +185,83 @@ const initDB = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Migration: thêm cột qr_image vào bank_accounts nếu chưa có
-    try {
-      const [bankCols] = await connection.query("SHOW COLUMNS FROM bank_accounts LIKE 'qr_image'");
-      if (bankCols.length === 0) {
-        await connection.query("ALTER TABLE bank_accounts ADD COLUMN qr_image VARCHAR(500) NULL AFTER account_number");
-        console.log('Đã thêm cột qr_image vào bảng bank_accounts');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột qr_image vào bank_accounts:', err.message);
-    }
+    // ── 8. Migrations (chạy sau khi tất cả bảng đã tồn tại) ─────────────────
 
-    // Migration: thêm cột accountant_status vào bookings
-    try {
-      const [accStatusCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'accountant_status'");
-      if (accStatusCols.length === 0) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN accountant_status ENUM('pending', 'paid', 'rejected') NULL AFTER is_valid");
-        console.log('Đã thêm cột accountant_status vào bảng bookings');
-      } else {
-        // Đảm bảo ENUM có đủ giá trị
-        await connection.query("ALTER TABLE bookings MODIFY COLUMN accountant_status ENUM('pending', 'paid', 'rejected') NULL");
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột accountant_status:', err.message);
-    }
+    // users
+    try { await connection.query('ALTER TABLE users MODIFY password VARCHAR(255) NULL'); } catch {}
+    try { await connection.query("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0"); } catch {}
+    try { await connection.query("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)"); } catch {}
+    try { await connection.query("ALTER TABLE users ADD COLUMN status ENUM('active','locked') DEFAULT 'active' AFTER role"); } catch {}
+    try { await connection.query("ALTER TABLE users ADD COLUMN level TINYINT DEFAULT 1 AFTER role"); } catch {}
+    try { await connection.query("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)"); } catch {}
+    try { await connection.query("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP NULL"); } catch {}
 
-    // Migration: chuyển đổi dữ liệu cũ accountant_paid → staff_confirmed + accountant_status
-    try {
-      await connection.query(`
-        UPDATE bookings 
-        SET status = 'staff_confirmed', accountant_status = 'paid'
-        WHERE status = 'accountant_paid'
-      `);
-      // Đồng bộ lại ENUM status (bỏ accountant_paid)
-      await connection.query(`
-        ALTER TABLE bookings MODIFY COLUMN status 
-        ENUM('created', 'customer_paid', 'staff_confirmed', 'rejected', 'cancelled') 
-        NOT NULL DEFAULT 'created'
-      `);
-      console.log('Đã migrate accountant_paid → staff_confirmed + accountant_status=paid');
-    } catch (err) {
-      console.error('Lỗi khi migrate accountant_paid:', err.message);
-    }
-    try {
-      const [qrNameBookingCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'qr_name'");
-      if (qrNameBookingCols.length > 0) {
-        await connection.query("ALTER TABLE bookings DROP COLUMN qr_name");
-        console.log('Đã xóa cột qr_name khỏi bảng bookings');
-      }
-    } catch (err) {
-      console.error('Lỗi khi xóa cột qr_name khỏi bookings:', err.message);
-    }
-
-    // Migration: thêm cột customer_bank_qr_image vào bookings nếu chưa có
-    try {
-      const [bqrCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'customer_bank_qr_image'");
-      if (bqrCols.length === 0) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN customer_bank_qr_image VARCHAR(500) NULL AFTER customer_account_holder");
-        console.log('Đã thêm cột customer_bank_qr_image vào bảng bookings');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột customer_bank_qr_image vào bookings:', err.message);
-    }
-
-    // Migration: thêm cột admin_bank_qr_image vào bookings nếu chưa có
-    try {
-      const [abqrCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'admin_bank_qr_image'");
-      if (abqrCols.length === 0) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN admin_bank_qr_image VARCHAR(500) NULL AFTER admin_account_holder");
-        console.log('Đã thêm cột admin_bank_qr_image vào bảng bookings');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột admin_bank_qr_image vào bookings:', err.message);
-    }
-    // Kiểm tra và thêm cột staff_paid_proof_urls vào bảng bookings
-    try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM bookings');
-      const colNames = columns.map(c => c.Field);
-      
-      if (!colNames.includes('staff_paid_proof_urls')) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN staff_paid_proof_urls JSON NULL AFTER customer_paid_note");
-        console.log('Đã thêm cột staff_paid_proof_urls vào bảng bookings');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột staff_paid_proof_urls vào bảng bookings:', err.message);
-    }
-
-    // Migration: thêm cột accountant_editable vào bảng qrs nếu chưa có
-    try {
-      const [accEditCols] = await connection.query("SHOW COLUMNS FROM qrs LIKE 'accountant_editable'");
-      if (accEditCols.length === 0) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN accountant_editable TINYINT(1) DEFAULT 0 AFTER status");
-        console.log('Đã thêm cột accountant_editable vào bảng qrs');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột accountant_editable vào qrs:', err.message);
-    }
-
-    // Migration: thêm cột customer_id_card_urls vào bookings nếu chưa có
-    try {
-      const [idCardCols] = await connection.query("SHOW COLUMNS FROM bookings LIKE 'customer_id_card_urls'");
-      if (idCardCols.length === 0) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN customer_id_card_urls JSON NULL AFTER customer_paid_proof_urls");
-        console.log('Đã thêm cột customer_id_card_urls vào bảng bookings');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột customer_id_card_urls vào bookings:', err.message);
-    }
-
-    // Kiểm tra và thêm cột customer_paid_proof_urls vào bảng bookings
-    try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM bookings');
-      const colNames = columns.map(c => c.Field);
-      
-      if (!colNames.includes('customer_paid_proof_urls')) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN customer_paid_proof_urls JSON AFTER customer_paid_proof_url");
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột customer_paid_proof_urls vào bảng bookings:', err.message);
-    }
-
-    // Kiểm tra và thêm cột is_valid vào bảng bookings
-    try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM bookings');
-      const colNames = columns.map(c => c.Field);
-      
-      if (!colNames.includes('is_valid')) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN is_valid ENUM('yes', 'no') NULL AFTER reject_note");
-        console.log('Đã thêm cột is_valid vào bảng bookings');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột is_valid vào bảng bookings:', err.message);
-    }
-
-    // Cập nhật bảng qrs: Xóa card_line, fee_rate_l4, và đảm bảo có fee_rate (mặc định), fee_rate_l1, l2, l3
+    // qrs
     try {
       const [qrCols] = await connection.query("SHOW COLUMNS FROM qrs");
       const qrColNames = qrCols.map(c => c.Field);
-      
-      if (qrColNames.includes('card_line')) {
-        await connection.query("ALTER TABLE qrs DROP COLUMN card_line");
-        console.log("Bảng qrs: Đã xóa cột card_line");
-      }
-      if (qrColNames.includes('fee_rate_l4')) {
-        await connection.query("ALTER TABLE qrs DROP COLUMN fee_rate_l4");
-        console.log("Bảng qrs: Đã xóa cột fee_rate_l4");
-      }
-      if (!qrColNames.includes('fee_rate')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate DECIMAL(5,2) DEFAULT 0 AFTER id");
-        console.log("Bảng qrs: Đã thêm cột fee_rate");
-      }
-      if (!qrColNames.includes('fee_rate_l1')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l1 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate");
-      }
-      if (!qrColNames.includes('fee_rate_l2')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l2 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate_l1");
-      }
-      if (!qrColNames.includes('fee_rate_l3')) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l3 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate_l2");
-      }
-    } catch (err) {
-      console.error('Lỗi khi cập nhật bảng qrs:', err.message);
-    }
-    
-    // Kiểm tra và thêm cột status vào bảng qrs nếu chưa có
-    try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM qrs LIKE "status"');
-      if (columns.length === 0) {
-        await connection.query("ALTER TABLE qrs ADD COLUMN status ENUM('ready', 'maintenance') DEFAULT 'ready' AFTER card_lines");
-        console.log('Đã thêm cột status vào bảng qrs');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột status vào bảng qrs:', err.message);
-    }
-    
-    // Kiểm tra và thêm cột role nếu chưa có
-    try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM users LIKE "role"');
-      if (columns.length === 0) {
-        await connection.query("ALTER TABLE users ADD COLUMN role ENUM('admin_system', 'staff', 'accountant', 'user') DEFAULT 'user' AFTER full_name");
-        console.log('Đã thêm cột role vào bảng users');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thêm cột role:', err.message);
-    }
+      if (qrColNames.includes('card_line')) await connection.query("ALTER TABLE qrs DROP COLUMN card_line");
+      if (qrColNames.includes('fee_rate_l4')) await connection.query("ALTER TABLE qrs DROP COLUMN fee_rate_l4");
+      if (qrColNames.includes('image_url')) await connection.query("ALTER TABLE qrs DROP COLUMN image_url");
+      if (!qrColNames.includes('name')) await connection.query("ALTER TABLE qrs ADD COLUMN name VARCHAR(255) NULL AFTER id");
+      if (!qrColNames.includes('main_image')) await connection.query("ALTER TABLE qrs ADD COLUMN main_image VARCHAR(255) AFTER id");
+      if (!qrColNames.includes('qr_image')) await connection.query("ALTER TABLE qrs ADD COLUMN qr_image VARCHAR(255) AFTER main_image");
+      if (!qrColNames.includes('fee_rate')) await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate DECIMAL(5,2) DEFAULT 0 AFTER id");
+      if (!qrColNames.includes('fee_rate_l1')) await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l1 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate");
+      if (!qrColNames.includes('fee_rate_l2')) await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l2 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate_l1");
+      if (!qrColNames.includes('fee_rate_l3')) await connection.query("ALTER TABLE qrs ADD COLUMN fee_rate_l3 DECIMAL(5,2) DEFAULT 0 AFTER fee_rate_l2");
+      if (!qrColNames.includes('accountant_editable')) await connection.query("ALTER TABLE qrs ADD COLUMN accountant_editable TINYINT(1) DEFAULT 0 AFTER status");
+    } catch (err) { console.error('Lỗi migration qrs:', err.message); }
 
-    // Kiểm tra và thêm cột reset_token nếu chưa có
+    // bookings — migrate dữ liệu cũ accountant_paid
     try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM users LIKE "reset_token"');
-      if (columns.length === 0) {
-        await connection.query("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)");
-      }
-    } catch (err) {}
+      await connection.query(`UPDATE bookings SET status = 'staff_confirmed', accountant_status = 'paid' WHERE status = 'accountant_paid'`);
+    } catch {}
 
-    // Kiểm tra và thêm cột reset_token_expires nếu chưa có
+    // bookings — đồng bộ ENUM status (bỏ accountant_paid)
     try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM users LIKE "reset_token_expires"');
-      if (columns.length === 0) {
-        await connection.query("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP NULL");
-      }
-    } catch (err) {}
+      await connection.query(`ALTER TABLE bookings MODIFY COLUMN status ENUM('created','customer_paid','staff_confirmed','rejected','cancelled') NOT NULL DEFAULT 'created'`);
+    } catch (err) { console.error('Lỗi sync enum status bookings:', err.message); }
 
-    // Kiểm tra và thêm cột reject_note nếu chưa có trong bookings
+    // bookings — thêm các cột còn thiếu
     try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM bookings LIKE "reject_note"');
-      if (columns.length === 0) {
-        await connection.query("ALTER TABLE bookings ADD COLUMN reject_note TEXT NULL AFTER customer_paid_note");
-      }
-    } catch (err) {}
+      const [bCols] = await connection.query('SHOW COLUMNS FROM bookings');
+      const bColNames = bCols.map(c => c.Field);
+      if (!bColNames.includes('admin_bank_name')) await connection.query("ALTER TABLE bookings ADD COLUMN admin_bank_name VARCHAR(120) NULL AFTER customer_account_holder");
+      if (!bColNames.includes('admin_account_number')) await connection.query("ALTER TABLE bookings ADD COLUMN admin_account_number VARCHAR(60) NULL AFTER admin_bank_name");
+      if (!bColNames.includes('admin_account_holder')) await connection.query("ALTER TABLE bookings ADD COLUMN admin_account_holder VARCHAR(255) NULL AFTER admin_account_number");
+      if (!bColNames.includes('admin_bank_qr_image')) await connection.query("ALTER TABLE bookings ADD COLUMN admin_bank_qr_image VARCHAR(500) NULL AFTER admin_account_holder");
+      if (!bColNames.includes('customer_bank_qr_image')) await connection.query("ALTER TABLE bookings ADD COLUMN customer_bank_qr_image VARCHAR(500) NULL AFTER customer_account_holder");
+      if (!bColNames.includes('customer_paid_proof_url')) await connection.query("ALTER TABLE bookings ADD COLUMN customer_paid_proof_url VARCHAR(255) NULL");
+      if (!bColNames.includes('customer_paid_proof_urls')) await connection.query("ALTER TABLE bookings ADD COLUMN customer_paid_proof_urls JSON NULL AFTER customer_paid_proof_url");
+      if (!bColNames.includes('customer_id_card_urls')) await connection.query("ALTER TABLE bookings ADD COLUMN customer_id_card_urls JSON NULL AFTER customer_paid_proof_urls");
+      if (!bColNames.includes('staff_paid_proof_urls')) await connection.query("ALTER TABLE bookings ADD COLUMN staff_paid_proof_urls JSON NULL AFTER customer_paid_note");
+      if (!bColNames.includes('accountant_paid_proof_url')) await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_url VARCHAR(255) NULL");
+      if (!bColNames.includes('accountant_paid_proof_urls')) await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_proof_urls JSON NULL AFTER accountant_paid_proof_url");
+      if (!bColNames.includes('accountant_paid_at')) await connection.query("ALTER TABLE bookings ADD COLUMN accountant_paid_at TIMESTAMP NULL");
+      if (!bColNames.includes('is_valid')) await connection.query("ALTER TABLE bookings ADD COLUMN is_valid ENUM('yes','no') NULL AFTER reject_note");
+      if (!bColNames.includes('accountant_status')) await connection.query("ALTER TABLE bookings ADD COLUMN accountant_status ENUM('pending','paid','rejected') NULL AFTER is_valid");
+      if (!bColNames.includes('confirmed_at')) await connection.query("ALTER TABLE bookings ADD COLUMN confirmed_at TIMESTAMP NULL");
+      if (bColNames.includes('completed_at')) await connection.query("ALTER TABLE bookings DROP COLUMN completed_at");
+      if (bColNames.includes('qr_name')) await connection.query("ALTER TABLE bookings DROP COLUMN qr_name");
+    } catch (err) { console.error('Lỗi migration bookings columns:', err.message); }
 
-    // Đồng bộ enum status của bookings
+    // bookings — đảm bảo ENUM accountant_status đủ giá trị
     try {
-      await connection.query("ALTER TABLE bookings MODIFY status ENUM('created', 'customer_paid', 'staff_confirmed', 'accountant_paid', 'rejected', 'cancelled') NOT NULL DEFAULT 'created'");
-    } catch (err) {
-      console.error('Lỗi khi đồng bộ enum status bookings:', err.message);
-    }
+      await connection.query("ALTER TABLE bookings MODIFY COLUMN accountant_status ENUM('pending','paid','rejected') NULL");
+    } catch {}
 
-    // Bỏ cột completed_at nếu còn tồn tại
-    try {
-      const [columns] = await connection.query('SHOW COLUMNS FROM bookings LIKE "completed_at"');
-      if (columns.length > 0) {
-        await connection.query('ALTER TABLE bookings DROP COLUMN completed_at');
-      }
-    } catch (err) {}
-    
-    // Cập nhật bảng hiện tại nếu password đang là NOT NULL
-    try {
-      await connection.query('ALTER TABLE users MODIFY password VARCHAR(255) NULL');
-    } catch (alterErr) {
-      // Bỏ qua nếu cột đã là NULL hoặc có lỗi khác không nghiêm trọng
-    }
+    // bank_accounts
+    try { await connection.query("ALTER TABLE bank_accounts ADD COLUMN qr_image VARCHAR(500) NULL AFTER account_number"); } catch {}
 
-    // Thêm các cột xác thực nếu chưa có
-    try {
-      await connection.query('ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0');
-    } catch (err) {}
-    try {
-      await connection.query('ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)');
-    } catch (err) {}
+    // qrs — thêm base_fee_rate
+    try { await connection.query("ALTER TABLE qrs ADD COLUMN base_fee_rate DECIMAL(5,2) DEFAULT 0 AFTER max_amount_per_trans"); } catch {}
 
-    console.log('Bảng users đã sẵn sàng');
+    // bookings — thêm base_fee_rate, base_fee_amount
+    try { await connection.query("ALTER TABLE bookings ADD COLUMN base_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER transfer_amount"); } catch {}
+    try { await connection.query("ALTER TABLE bookings ADD COLUMN base_fee_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER base_fee_rate"); } catch {}
+
+    console.log('Database đã sẵn sàng');
     connection.release();
   } catch (err) {
     console.error('Lỗi khởi tạo DB:', err);

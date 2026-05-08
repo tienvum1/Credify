@@ -21,7 +21,7 @@
     margin-bottom: 10px;
 
     &--money {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         margin-bottom: 24px;
 
         .stat-value {
@@ -129,7 +129,18 @@
         background: #fdf4ff;
         color: #a855f7;
     }
+
+    &.base-fee .stat-icon {
+        background: #fff7ed;
+        color: #ea580c;
+    }
+
+    &.profit .stat-icon {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
 }
+
 
 .loading-skeleton {
     padding: 16px;
