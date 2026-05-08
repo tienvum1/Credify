@@ -17,6 +17,7 @@ const AccountantBookingManager = () => {
     completed_count: 0,
     total_amount: 0,
     total_base_fee: 0,
+    total_transfer: 0,
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -158,6 +159,13 @@ const AccountantBookingManager = () => {
           <div className="stat-info">
             <span className="label">Đã thanh toán</span>
             <span className="value">{stats.completed_count}</span>
+          </div>
+        </div>
+        <div className="stat-card transfer">
+          <div className="stat-icon">📥</div>
+          <div className="stat-info">
+            <span className="label">Tổng tiền khách gửi</span>
+            <span className="value">{formatMoney(stats.total_transfer)}</span>
           </div>
         </div>
         <div className="stat-card amount">

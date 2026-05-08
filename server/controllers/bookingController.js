@@ -1078,7 +1078,8 @@ const accountantGetBookings = async (req, res) => {
         COUNT(CASE WHEN b.accountant_status = 'pending' THEN 1 END) as pending_count,
         COUNT(CASE WHEN b.accountant_status = 'paid' THEN 1 END) as completed_count,
         SUM(CASE WHEN b.accountant_status = 'paid' THEN b.transfer_amount ELSE 0 END) as total_amount,
-        SUM(CASE WHEN b.accountant_status = 'paid' THEN COALESCE(b.base_fee_amount, 0) ELSE 0 END) as total_base_fee
+        SUM(CASE WHEN b.accountant_status = 'paid' THEN COALESCE(b.base_fee_amount, 0) ELSE 0 END) as total_base_fee,
+        SUM(b.transfer_amount) as total_transfer
       FROM bookings b 
       JOIN users u ON u.id = b.customer_id 
       ${whereSql}

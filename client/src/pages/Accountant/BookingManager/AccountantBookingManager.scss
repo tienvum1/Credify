@@ -103,11 +103,11 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 20px;
     margin-bottom: 32px;
 
-    @media (max-width: 1200px) {
+    @media (max-width: 1400px) {
       grid-template-columns: repeat(3, 1fr);
     }
 
@@ -184,6 +184,14 @@
 
       &.base-fee .value {
         color: #ea580c;
+      }
+
+      &.transfer .stat-icon {
+        background: #eff6ff;
+      }
+
+      &.transfer .value {
+        color: #1d4ed8;
       }
     }
   }
