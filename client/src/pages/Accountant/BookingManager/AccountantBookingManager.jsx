@@ -87,7 +87,8 @@ const AccountantBookingManager = () => {
   };
 
   const formatMoney = (amount) => {
-    return Number(amount).toLocaleString('vi-VN') + 'đ';
+    const n = Math.round(Number(amount) || 0);
+    return n.toLocaleString('vi-VN') ;
   };
 
   const getStatusBadge = (booking) => {
@@ -162,21 +163,18 @@ const AccountantBookingManager = () => {
           </div>
         </div>
         <div className="stat-card transfer">
-          <div className="stat-icon">📥</div>
           <div className="stat-info">
             <span className="label">Tổng tiền khách gửi</span>
             <span className="value">{formatMoney(stats.total_transfer)}</span>
           </div>
         </div>
         <div className="stat-card amount">
-          <div className="stat-icon">💰</div>
           <div className="stat-info">
-            <span className="label">Tổng tiền đã chuyển</span>
+            <span className="label">Tổng tiền chuyển cho admin</span>
             <span className="value">{formatMoney(stats.total_amount)}</span>
           </div>
         </div>
         <div className="stat-card base-fee">
-          <div className="stat-icon">🏷️</div>
           <div className="stat-info">
             <span className="label">Tổng phí gốc</span>
             <span className="value">{formatMoney(stats.total_base_fee)}</span>
