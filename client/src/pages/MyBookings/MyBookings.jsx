@@ -273,18 +273,19 @@ const MyBookings = () => {
               <th>Phí</th>
               <th>Thực nhận</th>
               <th>Trạng thái</th>
+              <th>Xác nhận</th>
               <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={11}>
                   {renderSkeleton()}
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
-              <tr><td colSpan={10} className="empty">Không tìm thấy đơn hàng nào.</td></tr>
+              <tr><td colSpan={11} className="empty">Không tìm thấy đơn hàng nào.</td></tr>
             ) : (
               bookings.map((b) => (
                 <tr key={b.id}>
@@ -297,6 +298,15 @@ const MyBookings = () => {
                   <td data-label="Phí">{formatMoney(b.fee_amount)}</td>
                   <td data-label="Thực nhận"><strong style={{ color: '#10b981' }}>{formatMoney(b.net_amount)}</strong></td>
                   <td data-label="Trạng thái">{statusLabel(b.status)}</td>
+                  <td data-label="Xác nhận">
+                    {b.is_valid === 'yes' ? (
+                      <span className="valid-badge yes">✓ Có</span>
+                    ) : b.is_valid === 'no' ? (
+                      <span className="valid-badge no">✗ Không</span>
+                    ) : (
+                      <span className="valid-badge none">—</span>
+                    )}
+                  </td>
                   <td data-label="Thao tác">
                     {b.status === 'created' && (
                       <button
