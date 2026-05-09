@@ -845,13 +845,14 @@
     // Mỗi cell thành 1 dòng label + value
     tbody td {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      justify-content: flex-start;
+      align-items: flex-start;
+      flex-direction: column;
       padding: 8px 0;
       border: none;
       border-bottom: 1px dashed #f1f5f9;
       font-size: 14px;
-      gap: 8px;
+      gap: 2px;
       // Reset sticky
       position: static !important;
       background: transparent !important;
@@ -873,16 +874,14 @@
         letter-spacing: 0.04em;
         color: #94a3b8;
         flex-shrink: 0;
-        min-width: 90px;
       }
 
-      // Nội dung bên phải
-      &>*:not(:first-child),
+      // Nội dung căn trái
+      &>*,
       &>span,
       &>div,
       &>strong {
-        text-align: right;
-        margin-left: auto;
+        text-align: left;
       }
     }
 

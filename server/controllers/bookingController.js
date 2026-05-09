@@ -1037,7 +1037,7 @@ const staffRejectBooking = async (req, res) => {
 // Kế toán lấy tất cả đơn hàng mà khách đã upload bill (không lọc theo is_valid)
 const accountantGetBookings = async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10, dateRange = 'all' } = req.query;
+    const { status, search, page = 1, limit = 10, dateRange = 'all', is_valid } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Lấy tất cả đơn mà khách đã chuyển tiền (đã up bill)
@@ -1068,6 +1068,12 @@ const accountantGetBookings = async (req, res) => {
       } else if (dateRange === '30days') {
         whereSql += " AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
       }
+    }
+
+    if (is_valid && is_valid !== '') {
+      if (is_valid === 'yes') whereSql += " AND b.is_valid = 'yes'";
+      else if (is_valid === 'no') whereSql += " AND b.is_valid = 'no'";
+      else if (is_valid === 'null') whereSql += " AND b.is_valid IS NULL";
     }
 
     // Đếm tổng số đơn để phân trang và lấy thống kê

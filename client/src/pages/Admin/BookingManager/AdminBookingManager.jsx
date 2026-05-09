@@ -301,8 +301,8 @@ const AdminBookingManager = () => {
               <th>Kế toán</th>
               <th>Trạng thái</th>
               <th>Thời gian</th>
+              <th>Xác nhận</th>
               <th>Thao tác</th>
-              <th className="th-valid">Xác nhận</th>
             </tr>
           </thead>
           <tbody>
@@ -349,6 +349,13 @@ const AdminBookingManager = () => {
                 <td data-label="Thời gian">
                   <span>{formatDateTime(b.created_at)}</span>
                 </td>
+                <td data-label="Xác nhận">
+                  {b.is_valid === 'yes'
+                    ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Có</span>
+                    : b.is_valid === 'no'
+                      ? <span style={{ color: '#dc2626', fontWeight: 700 }}>✗ Không</span>
+                      : <span style={{ color: '#cbd5e1' }}>—</span>}
+                </td>
                 <td>
                   <div className="row-actions">
                     {b.status === 'customer_paid' && !b.staff_id && (
@@ -363,13 +370,6 @@ const AdminBookingManager = () => {
                       <Trash2 size={15} />
                     </button>
                   </div>
-                </td>
-                <td data-label="Xác nhận" className="td-valid">
-                  {b.is_valid === 'yes'
-                    ? <div className="valid-icon yes" title="Hợp lệ"><Check size={16} /></div>
-                    : b.is_valid === 'no'
-                      ? <div className="valid-icon no" title="Không hợp lệ"><X size={16} /></div>
-                      : <span className="valid-none">—</span>}
                 </td>
               </tr>
             ))}

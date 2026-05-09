@@ -22,6 +22,7 @@ const AccountantBookingManager = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [validFilter, setValidFilter] = useState('');
   const [dateRange, setDateRange] = useState('all');
   
   // Phân trang
@@ -32,7 +33,7 @@ const AccountantBookingManager = () => {
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/bookings/accountant/list?search=${search}&status=${statusFilter}&dateRange=${dateRange}&page=${page}&limit=${limit}`);
+      const res = await api.get(`/bookings/accountant/list?search=${search}&status=${statusFilter}&is_valid=${validFilter}&dateRange=${dateRange}&page=${page}&limit=${limit}`);
       
       // Parse JSON proof urls for all bookings
       const processedData = res.data.data.map(b => {
@@ -61,7 +62,7 @@ const AccountantBookingManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, dateRange, page, limit]);
+  }, [search, statusFilter, validFilter, dateRange, page, limit]);
 
   useEffect(() => {
     const init = async () => {
@@ -78,6 +79,11 @@ const AccountantBookingManager = () => {
 
   const handleStatusChange = (e) => {
     setStatusFilter(e.target.value);
+    setPage(1);
+  };
+
+  const handleValidChange = (e) => {
+    setValidFilter(e.target.value);
     setPage(1);
   };
 
@@ -128,6 +134,13 @@ const AccountantBookingManager = () => {
             <option value="pending">Chờ chuyển tiền</option>
             <option value="paid">Đã chuyển tiền</option>
             <option value="rejected">Từ chối chuyển tiền</option>
+          </select>
+
+          <select value={validFilter} onChange={handleValidChange}>
+            <option value="">Tất cả xác nhận</option>
+            <option value="yes">✓ Có</option>
+            <option value="no">✗ Không</option>
+            <option value="null">Chưa xác nhận</option>
           </select>
 
           <select value={dateRange} onChange={handleDateRangeChange}>
@@ -229,11 +242,11 @@ const AccountantBookingManager = () => {
                         <td>{getStatusBadge(b)}</td>
                         <td>
                           {b.is_valid === 'yes' ? (
-                            <span className="valid-badge yes">✓ Hợp lệ</span>
+                            <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Có</span>
                           ) : b.is_valid === 'no' ? (
-                            <span className="valid-badge no">✗ Không hợp lệ</span>
+                            <span style={{ color: '#dc2626', fontWeight: 700 }}>✗ Không</span>
                           ) : (
-                            <span className="valid-badge none">—</span>
+                            <span style={{ color: '#cbd5e1' }}>—</span>
                           )}
                         </td>
                         <td className="actions-col">
@@ -265,6 +278,16 @@ const AccountantBookingManager = () => {
                     <div className="card-row">
                       <span className="label">Số tiền:</span>
                       <span className="value amount">{formatMoney(b.transfer_amount)}</span>
+                    </div>
+                    <div className="card-row">
+                      <span className="label">Xác nhận:</span>
+                      <span className="value">
+                        {b.is_valid === 'yes'
+                          ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Có</span>
+                          : b.is_valid === 'no'
+                            ? <span style={{ color: '#dc2626', fontWeight: 700 }}>✗ Không</span>
+                            : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </span>
                     </div>
                     <div className="card-row admin-box">
                       <div className="label">Nguồn tiền Admin:</div>

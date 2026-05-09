@@ -611,55 +611,6 @@
     font-weight: 600;
 }
 
-// Validity column (same as Staff)
-.td-valid,
-.th-valid {
-    text-align: center;
-    width: 90px;
-    position: sticky;
-    right: 0;
-    z-index: 3;
-    background: #f8fafc; // Nền đậm cho cột cuối
-    border-left: 1px solid rgba(0, 0, 0, 0.05);
-
-    .valid-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-
-        &.yes {
-            background: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #dcfce7;
-        }
-
-        &.no {
-            background: #fef2f2;
-            color: #ef4444;
-            border: 1px solid #fee2e2;
-        }
-    }
-
-    .valid-none {
-        color: #cbd5e1;
-        font-weight: 400;
-    }
-}
-
-.th-valid {
-    z-index: 4;
-    background: #f1f5f9 !important;
-    font-weight: 800 !important;
-    color: #1e293b !important;
-}
-
-.td-valid {
-    box-shadow: -8px 0 12px rgba(0, 0, 0, 0.03);
-}
-
 // Modal styles
 .modal-overlay {
     position: fixed;
