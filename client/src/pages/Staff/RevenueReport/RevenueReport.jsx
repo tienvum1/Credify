@@ -268,32 +268,32 @@ const RevenueReport = () => {
                     <tr><td colSpan={8} className="empty-state">Chưa có dữ liệu trong kỳ này</td></tr>
                   ) : sectionData.total.map((item, idx) => (
                     <tr key={idx}>
-                      <td><strong>{fmtDate(item.label)}</strong></td>
-                      <td className="text-center">{Number(item.total_count).toLocaleString()}</td>
-                      <td className="text-center text-success">{Number(item.completed_count).toLocaleString()}</td>
-                      <td className="text-center text-warning">{Number(item.processing_count).toLocaleString()}</td>
-                      <td className="text-center text-danger">{Number(item.rejected_count).toLocaleString()}</td>
-                      <td className="text-center text-muted">{Number(item.cancelled_count).toLocaleString()}</td>
-                      <td className="text-right text-revenue font-bold">{fmt(item.total_amount)}</td>
-                      <td className="text-right text-fee">{fmt(item.total_fee)}</td>
-                      {isAdminPath && <td className="text-right" style={{color:'#ea580c'}}>{fmt(item.total_base_fee)}</td>}
-                      {isAdminPath && <td className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(item.total_profit)}</td>}
+                      <td data-label="Thời gian"><strong>{fmtDate(item.label)}</strong></td>
+                      <td data-label="Tổng đơn" className="text-center">{Number(item.total_count).toLocaleString()}</td>
+                      <td data-label="Hoàn thành" className="text-center text-success">{Number(item.completed_count).toLocaleString()}</td>
+                      <td data-label="Đang xử lý" className="text-center text-warning">{Number(item.processing_count).toLocaleString()}</td>
+                      <td data-label="Từ chối" className="text-center text-danger">{Number(item.rejected_count).toLocaleString()}</td>
+                      <td data-label="Đã hủy" className="text-center text-muted">{Number(item.cancelled_count).toLocaleString()}</td>
+                      <td data-label="Doanh thu" className="text-right text-revenue font-bold">{fmt(item.total_amount)}</td>
+                      <td data-label="Phí khách" className="text-right text-fee">{fmt(item.total_fee)}</td>
+                      {isAdminPath && <td data-label="Phí gốc" className="text-right" style={{color:'#ea580c'}}>{fmt(item.total_base_fee)}</td>}
+                      {isAdminPath && <td data-label="Lợi nhuận" className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(item.total_profit)}</td>}
                     </tr>
                   ))}
                 </tbody>
                 {sectionData.total.length > 0 && (
                   <tfoot>
                     <tr className="total-row">
-                      <td><strong>Tổng cộng</strong></td>
-                      <td className="text-center"><strong>{totalRow.total_count.toLocaleString()}</strong></td>
-                      <td className="text-center text-success"><strong>{totalRow.completed_count.toLocaleString()}</strong></td>
-                      <td className="text-center text-warning"><strong>{totalRow.processing_count.toLocaleString()}</strong></td>
-                      <td className="text-center text-danger"><strong>{totalRow.rejected_count.toLocaleString()}</strong></td>
-                      <td className="text-center text-muted"><strong>{totalRow.cancelled_count.toLocaleString()}</strong></td>
-                      <td className="text-right text-revenue"><strong>{fmt(totalRow.total_amount)}</strong></td>
-                      <td className="text-right text-fee"><strong>{fmt(totalRow.total_fee)}</strong></td>
-                      {isAdminPath && <td className="text-right" style={{color:'#ea580c'}}><strong>{fmt(sectionData.total.reduce((a,r)=>a+Number(r.total_base_fee||0),0))}</strong></td>}
-                      {isAdminPath && <td className="text-right" style={{color:'#16a34a'}}><strong>{fmt(sectionData.total.reduce((a,r)=>a+Number(r.total_profit||0),0))}</strong></td>}
+                      <td data-label="Tổng cộng"></td>
+                      <td data-label="Tổng đơn" className="text-center"><strong>{totalRow.total_count.toLocaleString()}</strong></td>
+                      <td data-label="Hoàn thành" className="text-center text-success"><strong>{totalRow.completed_count.toLocaleString()}</strong></td>
+                      <td data-label="Đang xử lý" className="text-center text-warning"><strong>{totalRow.processing_count.toLocaleString()}</strong></td>
+                      <td data-label="Từ chối" className="text-center text-danger"><strong>{totalRow.rejected_count.toLocaleString()}</strong></td>
+                      <td data-label="Đã hủy" className="text-center text-muted"><strong>{totalRow.cancelled_count.toLocaleString()}</strong></td>
+                      <td data-label="Doanh thu" className="text-right text-revenue"><strong>{fmt(totalRow.total_amount)}</strong></td>
+                      <td data-label="Phí khách" className="text-right text-fee"><strong>{fmt(totalRow.total_fee)}</strong></td>
+                      {isAdminPath && <td data-label="Phí gốc" className="text-right" style={{color:'#ea580c'}}><strong>{fmt(sectionData.total.reduce((a,r)=>a+Number(r.total_base_fee||0),0))}</strong></td>}
+                      {isAdminPath && <td data-label="Lợi nhuận" className="text-right" style={{color:'#16a34a'}}><strong>{fmt(sectionData.total.reduce((a,r)=>a+Number(r.total_profit||0),0))}</strong></td>}
                     </tr>
                   </tfoot>
                 )}
@@ -341,20 +341,20 @@ const RevenueReport = () => {
                   <tbody>
                     {sectionData.byStaff.map((s, idx) => (
                       <tr key={idx}>
-                        <td><strong>{fmtDate(s.label)}</strong></td>
-                        <td>
+                        <td data-label="Thời gian"><strong>{fmtDate(s.label)}</strong></td>
+                        <td data-label="Nhân viên">
                           <div className="staff-info-cell">
                             <strong>{s.staff_name}</strong>
                             <small>ID: #{s.staff_id}</small>
                           </div>
                         </td>
-                        <td className="text-center">{Number(s.total_count).toLocaleString()}</td>
-                        <td className="text-center text-success">{Number(s.completed_count).toLocaleString()}</td>
-                        <td className="text-center text-danger">{(Number(s.cancelled_count) + Number(s.rejected_count)).toLocaleString()}</td>
-                        <td className="text-right text-revenue font-bold">{fmt(s.total_amount)}</td>
-                        <td className="text-right text-fee">{fmt(s.total_fee)}</td>
-                        <td className="text-right" style={{color:'#ea580c'}}>{fmt(s.total_base_fee)}</td>
-                        <td className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(s.total_profit)}</td>
+                        <td data-label="Tổng đơn" className="text-center">{Number(s.total_count).toLocaleString()}</td>
+                        <td data-label="Hoàn thành" className="text-center text-success">{Number(s.completed_count).toLocaleString()}</td>
+                        <td data-label="Hủy/Từ chối" className="text-center text-danger">{(Number(s.cancelled_count) + Number(s.rejected_count)).toLocaleString()}</td>
+                        <td data-label="Doanh thu" className="text-right text-revenue font-bold">{fmt(s.total_amount)}</td>
+                        <td data-label="Phí khách" className="text-right text-fee">{fmt(s.total_fee)}</td>
+                        <td data-label="Phí gốc" className="text-right" style={{color:'#ea580c'}}>{fmt(s.total_base_fee)}</td>
+                        <td data-label="Lợi nhuận" className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(s.total_profit)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -397,8 +397,8 @@ const RevenueReport = () => {
                     <tr><td colSpan={isAdminPath ? 9 : 7} className="empty-state">Chưa có dữ liệu giao dịch trong kỳ này</td></tr>
                   ) : sectionData.byQr.map((qr, idx) => (
                     <tr key={idx}>
-                      <td><strong>{fmtDate(qr.label)}</strong></td>
-                      <td>
+                      <td data-label="Thời gian"><strong>{fmtDate(qr.label)}</strong></td>
+                      <td data-label="Thẻ QR">
                         <div className="qr-id-cell">
                           <span className="dot" />
                           <div>
@@ -407,13 +407,13 @@ const RevenueReport = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="text-center">{Number(qr.total_count).toLocaleString()}</td>
-                      <td className="text-center text-success">{Number(qr.completed_count).toLocaleString()}</td>
-                      <td className="text-center text-danger">{(Number(qr.cancelled_count) + Number(qr.rejected_count)).toLocaleString()}</td>
-                      <td className="text-right text-revenue font-bold">{fmt(qr.total_amount)}</td>
-                      <td className="text-right text-fee">{fmt(qr.total_fee)}</td>
-                      {isAdminPath && <td className="text-right" style={{color:'#ea580c'}}>{fmt(qr.total_base_fee)}</td>}
-                      {isAdminPath && <td className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(qr.total_profit)}</td>}
+                      <td data-label="Tổng đơn" className="text-center">{Number(qr.total_count).toLocaleString()}</td>
+                      <td data-label="Hoàn thành" className="text-center text-success">{Number(qr.completed_count).toLocaleString()}</td>
+                      <td data-label="Hủy/Từ chối" className="text-center text-danger">{(Number(qr.cancelled_count) + Number(qr.rejected_count)).toLocaleString()}</td>
+                      <td data-label="Doanh thu" className="text-right text-revenue font-bold">{fmt(qr.total_amount)}</td>
+                      <td data-label="Phí khách" className="text-right text-fee">{fmt(qr.total_fee)}</td>
+                      {isAdminPath && <td data-label="Phí gốc" className="text-right" style={{color:'#ea580c'}}>{fmt(qr.total_base_fee)}</td>}
+                      {isAdminPath && <td data-label="Lợi nhuận" className="text-right" style={{color:'#16a34a', fontWeight:700}}>{fmt(qr.total_profit)}</td>}
                     </tr>
                   ))}
                 </tbody>

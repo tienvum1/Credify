@@ -330,27 +330,32 @@
           text-align: left;
 
           @media (max-width: 768px) {
-            display: flex;
-            padding: 12px 20px;
+            display: grid !important;
+            grid-template-columns: 110px 1fr;
+            align-items: start;
+            padding: 10px 20px;
             border-bottom: none;
             font-size: 14px;
+            gap: 8px;
+            text-align: left !important;
 
             &::before {
               content: attr(data-label);
-              width: 130px; // Cột nhãn cố định
-              flex-shrink: 0;
               font-size: 11px;
               font-weight: 700;
               color: #64748b;
               text-transform: uppercase;
-              padding-top: 3px;
+              padding-top: 2px;
+              text-align: left;
             }
 
+            // Override tất cả căn phải/giữa
+            &,
+            &>*,
             &>div,
             &>strong,
             &>span {
-              flex: 1;
-              text-align: left; // Giá trị căn lề trái
+              text-align: left !important;
             }
           }
 
@@ -431,8 +436,8 @@
 
           @media (max-width: 768px) {
             display: block;
-            padding: 16px 0;
-            border-bottom: 8px solid #f8fafc;
+            padding: 4px 0;
+            border-bottom: 1px solid #f1f5f9;
 
             &:last-child {
               border-bottom: none;

@@ -584,8 +584,8 @@ const getStaffStats = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN b.status IN ('created', 'customer_paid') AND b.staff_id IS NULL THEN 1 END) as pending_claim,
-        COUNT(CASE WHEN b.status IN ('created', 'customer_paid') AND b.staff_id IS NOT NULL THEN 1 END) as processing,
+        COUNT(CASE WHEN b.status = 'created' THEN 1 END) as pending_claim,
+        COUNT(CASE WHEN b.status = 'customer_paid' THEN 1 END) as processing,
         COUNT(CASE WHEN b.status IN ('staff_confirmed', 'completed', 'accountant_paid') THEN 1 END) as completed,
         COUNT(CASE WHEN b.status = 'rejected' THEN 1 END) as rejected,
         COUNT(CASE WHEN b.status = 'cancelled' THEN 1 END) as cancelled,
