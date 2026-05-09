@@ -229,8 +229,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.025em;
-    color: #000000;
-    opacity: 0.5;
+    color: rgba(0, 0, 0, 0.45);
     background: rgba(0, 0, 0, 0.02);
     padding: 11px 16px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -330,54 +329,6 @@
 .td-money,
 .th-money {
   text-align: left;
-}
-
-.td-valid,
-.th-valid {
-  text-align: center;
-  width: 90px;
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  background: #ffffff; // Nền đậm hơn cho cột cuối
-  border-left: 1px solid rgba(0, 0, 0, 0.05);
-
-  .valid-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-
-    &.yes {
-      background: #ffffff;
-      color: #16a34a;
-      border: 1px solid #dcfce7;
-    }
-
-    &.no {
-      background: #ffffff;
-      color: #ef4444;
-      border: 1px solid #fee2e2;
-    }
-  }
-
-  .valid-none {
-    color: #cbd5e1;
-    font-weight: 400;
-  }
-}
-
-.th-valid {
-  z-index: 4;
-  background: #ffffff !important; // Đậm hơn cho tiêu đề cuối
-  font-weight: 800 !important;
-  color: #1e293b !important;
-}
-
-.td-valid {
-  box-shadow: -8px 0 12px rgba(0, 0, 0, 0.03);
 }
 
 .td-date,
@@ -801,11 +752,12 @@
     align-items: stretch;
     width: 100%;
 
-    .search {
+    .search-box {
       width: 100%;
 
       input {
         width: 100%;
+        box-sizing: border-box;
       }
     }
 
@@ -824,29 +776,37 @@
   }
 
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: 1fr;
+    gap: 8px;
 
     .stat-card {
-      padding: 12px;
-      gap: 8px;
+      padding: 10px 14px;
+      gap: 10px;
+      border-radius: 10px;
 
       .stat-icon {
-        width: 36px;
-        height: 36px;
-        font-size: 18px;
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        border-radius: 8px;
+      }
+
+      .stat-label {
+        font-size: 9px;
       }
 
       .stat-value {
-        font-size: 16px;
+        font-size: 13px;
       }
     }
   }
 
   .booking-toolbar {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    padding: 16px;
   }
 
+  // Ẩn bảng desktop, hiện card mobile
   .table-shell {
     border: none;
     box-shadow: none;
@@ -858,166 +818,102 @@
     min-width: 0;
     width: 100%;
     display: block;
-    margin: 0;
-    padding: 0;
 
+    // Ẩn header
     thead {
       display: none;
     }
 
-    tbody,
-    tr,
-    td {
-      display: block;
-      width: 100%;
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
+    // Mỗi row thành 1 card
     tbody tr {
+      display: block;
       background: #fff;
-      border: 1px solid rgba(0, 0, 0, 0.06);
+      border: 1px solid #e2e8f0;
       border-radius: 16px;
       padding: 16px;
-      margin: 0 0 16px 0;
-      width: 100%;
-      box-sizing: border-box;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
       border-left: 4px solid #6366f1;
+      box-sizing: border-box;
     }
 
+    // Mỗi cell thành 1 dòng label + value
     tbody td {
-      border: none;
-      border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
-      padding: 12px 0;
       display: flex;
-      flex-direction: row; // Trả về dạng row để nhãn và nội dung nằm ngang
       justify-content: space-between;
       align-items: center;
-      text-align: left !important;
+      padding: 8px 0;
+      border: none;
+      border-bottom: 1px dashed #f1f5f9;
       font-size: 14px;
-      gap: 12px;
+      gap: 8px;
+      // Reset sticky
       position: static !important;
       background: transparent !important;
       box-shadow: none !important;
       width: 100% !important;
+      box-sizing: border-box;
 
-      &::before {
-        content: attr(data-label);
-        display: block;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: rgba(0, 0, 0, 0.4);
-        font-weight: 700;
-        text-align: left;
-        min-width: 100px; // Đảm bảo nhãn có chiều rộng cố định
-        padding-top: 0;
+      &:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
       }
 
+      // Label từ data-label
+      &::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #94a3b8;
+        flex-shrink: 0;
+        min-width: 90px;
+      }
+
+      // Nội dung bên phải
+      &>*:not(:first-child),
+      &>span,
       &>div,
-      &>span {
-        flex: 1;
-        display: flex;
-        justify-content: flex-end; // Đẩy nội dung sang phải
-        font-weight: 600;
-        color: #0f172a;
+      &>strong {
         text-align: right;
+        margin-left: auto;
       }
     }
 
-    // Cột Thao tác trên mobile
+    // Cột actions: nút nằm ngang full width
     .td-actions {
-      border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
-      padding: 16px 0;
-      display: block; // Trả về block để các nút chiếm hết chiều rộng
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding-top: 12px;
 
       &::before {
-        display: none; // Ẩn label "Thao tác" trên mobile
+        display: none;
       }
 
       .row-actions {
         width: 100%;
         display: flex;
-        flex-direction: row; // Nằm ngang
-        gap: 10px;
+        flex-direction: row;
+        gap: 8px;
 
         button {
           flex: 1;
           justify-content: center;
           padding: 10px;
-          height: 42px; // Chiều cao cố định để không bị méo
-          white-space: nowrap; // Không cho chữ xuống dòng
           font-size: 13px;
+          white-space: nowrap;
         }
       }
     }
 
-    // Cột Xác nhận cuối cùng trên mobile
-    .td-valid {
-      border-bottom: none;
-      padding: 12px 0 0;
-
-      .valid-icon {
-        width: 28px; // Giữ kích thước cố định
-        height: 28px;
-        flex: 0 0 28px !important; // Ngăn không cho co giãn (quan trọng)
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-left: auto; // Đẩy sang phải nếu cần
-
-        svg {
-          width: 16px;
-          height: 16px;
-          flex-shrink: 0;
-        }
-      }
-
-      .valid-none {
-        flex: 0 0 auto !important;
-      }
-    }
-
-    .loading-skeleton {
-      padding: 20px;
-
-      .skeleton-item {
-        height: 60px;
-        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-        background-size: 200% 100%;
-        animation: skeleton-loading 1.5s infinite;
-        border-radius: 12px;
-        margin-bottom: 12px;
-      }
-    }
-
-    @keyframes skeleton-loading {
-      0% {
-        background-position: 200% 0;
-      }
-
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: #94a3b8;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-
-      svg {
-        color: #cbd5e1;
-      }
-
-      p {
-        font-size: 15px;
-        font-weight: 500;
-      }
-    }
+    // Cột xác nhận: dùng data-label như các cột khác
+    // (không cần override gì thêm)
   }
 }

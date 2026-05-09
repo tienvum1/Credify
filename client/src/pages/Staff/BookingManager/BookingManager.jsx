@@ -115,7 +115,7 @@ const BookingManager = () => {
   const formatMoney = (value) => {
     const n = Math.round(Number(value));
     if (Number.isNaN(n)) return '—';
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
   const formatDateTime = (value) => {
@@ -347,8 +347,8 @@ const BookingManager = () => {
               <th>Nhân viên xử lý</th>
               <th className="th-status">Trạng thái</th>
               <th className="th-date">Thời gian</th>
+              <th>Xác nhận</th>
               <th className="th-actions">Thao tác</th>
-              <th className="th-valid">Xác nhận</th>
             </tr>
           </thead>
           <tbody>
@@ -400,6 +400,15 @@ const BookingManager = () => {
                       <span>{formatDateTime(b.created_at)}</span>
                     </div>
                   </td>
+                  <td data-label="Xác nhận">
+                    {b.is_valid === 'yes' ? (
+                      <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Có</span>
+                    ) : b.is_valid === 'no' ? (
+                      <span style={{ color: '#dc2626', fontWeight: 700 }}>✗ Không</span>
+                    ) : (
+                      <span style={{ color: '#cbd5e1' }}>—</span>
+                    )}
+                  </td>
                   <td className="td-actions">
                     <div className="row-actions">
                       {b.status === 'customer_paid' && !b.staff_id && (
@@ -420,19 +429,6 @@ const BookingManager = () => {
                         <span>Chi tiết</span>
                       </button>
                     </div>
-                  </td>
-                  <td data-label="Xác nhận" className="td-valid">
-                    {b.is_valid === 'yes' ? (
-                      <div className="valid-icon yes" title="Hợp lệ">
-                        <Check size={18} />
-                      </div>
-                    ) : b.is_valid === 'no' ? (
-                      <div className="valid-icon no" title="Không hợp lệ">
-                        <X size={18} />
-                      </div>
-                    ) : (
-                      <span className="valid-none">—</span>
-                    )}
                   </td>
                 </tr>
               ))
