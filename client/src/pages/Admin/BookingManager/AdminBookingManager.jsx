@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart3, Clock, CheckCircle2,
-  XCircle, UserPlus, Search, Trash2,
-  Check, X, Ban
+  Search, Trash2,
+  Check, X
 } from 'lucide-react';
 import api from '../../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -165,70 +164,60 @@ const AdminBookingManager = () => {
       {/* Stats */}
       <div className="stats-grid">
         <div className="stat-card total">
-          <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Tổng đơn</span>
             <span className="stat-value">{stats.total}</span>
           </div>
         </div>
         <div className="stat-card pending">
-          <div className="stat-icon"><UserPlus size={20} /></div>
           <div className="stat-info">
-            <span className="stat-label">Mới tạo </span>
+            <span className="stat-label">Mới tạo</span>
             <span className="stat-value">{stats.pending_claim}</span>
           </div>
         </div>
         <div className="stat-card processing">
-          <div className="stat-icon"><Clock size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Đang xử lý</span>
             <span className="stat-value">{stats.processing}</span>
           </div>
         </div>
         <div className="stat-card completed">
-          <div className="stat-icon"><CheckCircle2 size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Hoàn thành</span>
             <span className="stat-value">{stats.completed}</span>
           </div>
         </div>
         <div className="stat-card rejected">
-          <div className="stat-icon"><XCircle size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Từ chối</span>
             <span className="stat-value">{stats.rejected}</span>
           </div>
         </div>
         <div className="stat-card cancelled">
-          <div className="stat-icon"><Ban size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Đã hủy</span>
             <span className="stat-value">{stats.cancelled ?? 0}</span>
           </div>
         </div>
         <div className="stat-card amount">
-          <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Tổng doanh thu</span>
             <span className="stat-value">{formatMoney(stats.total_revenue)}</span>
           </div>
         </div>
         <div className="stat-card fee">
-          <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Tổng phí khách chịu</span>
             <span className="stat-value">{formatMoney(stats.total_fee)}</span>
           </div>
         </div>
         <div className="stat-card base-fee">
-          <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Tổng phí gốc</span>
             <span className="stat-value">{formatMoney(stats.total_base_fee)}</span>
           </div>
         </div>
         <div className="stat-card profit">
-          <div className="stat-icon"><BarChart3 size={20} /></div>
           <div className="stat-info">
             <span className="stat-label">Lợi nhuận</span>
             <span className="stat-value">{formatMoney(stats.total_profit)}</span>

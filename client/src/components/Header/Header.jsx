@@ -76,16 +76,22 @@ const Header = ({ user, handleLogout }) => {
                       <ShoppingCart size={16} /> Đơn của tôi
                     </Link>
                   )}
+               
                   {user?.role === 'admin_system' && (
+                    <>
                     <Link to="/admin/users" className="dropdown-item admin-portal-btn">
                       <LayoutDashboard size={16} /> Quản lý hệ thống
                     </Link>
+                     <Link to="/my-bookings" className="dropdown-item">
+                      <ShoppingCart size={16} /> Đơn của tôi
+                    </Link>
+                    </>
                   )}
                   {user?.role === 'staff' && (
                     <>
                       <Link to="/staff/bookings" className="dropdown-item">
                         <ShoppingCart size={16} /> Quản lý đơn
-                      </Link>
+                      </Link>        
                        <Link to="/staff/revenue" className="dropdown-item">
                         <BarChart2 size={16} /> Báo cáo doanh thu
                       </Link>

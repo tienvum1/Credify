@@ -90,8 +90,52 @@
         }
     }
 
+    &.total .stat-value {
+        color: #3b82f6 !important;
+    }
+
+    &.pending .stat-value {
+        color: #f59e0b !important;
+    }
+
+    &.processing .stat-value {
+        color: #db2777 !important;
+    }
+
+    &.completed .stat-value {
+        color: #10b981 !important;
+    }
+
+    &.rejected .stat-value {
+        color: #ef4444 !important;
+    }
+
+    &.cancelled .stat-value {
+        color: #94a3b8 !important;
+    }
+
+    &.amount .stat-value {
+        color: #ca8a04 !important;
+    }
+
+    &.fee .stat-value {
+        color: #a855f7 !important;
+    }
+
+    &.base-fee .stat-value {
+        color: #ea580c !important;
+    }
+
+    &.profit .stat-value {
+        color: #16a34a !important;
+    }
+
     &.total .stat-icon {
         background: #eff6ff;
+        color: #3b82f6;
+    }
+
+    &.total .stat-value {
         color: #3b82f6;
     }
 
@@ -100,8 +144,16 @@
         color: #f59e0b;
     }
 
+    &.pending .stat-value {
+        color: #f59e0b;
+    }
+
     &.processing .stat-icon {
         background: #fdf2f8;
+        color: #db2777;
+    }
+
+    &.processing .stat-value {
         color: #db2777;
     }
 
@@ -110,8 +162,16 @@
         color: #10b981;
     }
 
+    &.completed .stat-value {
+        color: #10b981;
+    }
+
     &.rejected .stat-icon {
         background: #fef2f2;
+        color: #ef4444;
+    }
+
+    &.rejected .stat-value {
         color: #ef4444;
     }
 
@@ -120,8 +180,16 @@
         color: #94a3b8;
     }
 
+    &.cancelled .stat-value {
+        color: #94a3b8;
+    }
+
     &.amount .stat-icon {
         background: #fefce8;
+        color: #ca8a04;
+    }
+
+    &.amount .stat-value {
         color: #ca8a04;
     }
 
@@ -130,15 +198,27 @@
         color: #a855f7;
     }
 
-    &.base-fee .stat-icon {
-        background: #fff7ed;
+    &.fee .stat-value {
+        color: #a855f7;
+    }
+
+    &.base-fee .stat-value {
         color: #ea580c;
     }
 
-    &.profit .stat-icon {
-        background: #f0fdf4;
+    &.profit .stat-value {
         color: #16a34a;
     }
+}
+
+&.base-fee .stat-icon {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+&.profit .stat-icon {
+    background: #f0fdf4;
+    color: #16a34a;
 }
 
 
@@ -503,45 +583,42 @@
                 gap: 10px;
 
                 td {
-                    display: flex;
-                    flex-direction: row; // Chuyển sang 2 cột ngang
-                    padding: 10px 0; // Padding trên dưới cho mỗi hàng
+                    display: grid;
+                    grid-template-columns: 110px 1fr;
+                    align-items: start;
+                    padding: 10px 0;
                     border: none;
-                    text-align: left;
-                    align-items: flex-start;
-                    gap: 12px;
-                    border-bottom: 1px dashed #f1f5f9; // Thêm đường kẻ giữa các hàng
+                    gap: 8px;
+                    border-bottom: 1px dashed #f1f5f9;
                     position: static !important;
                     background: transparent !important;
                     box-shadow: none !important;
                     width: 100% !important;
+                    text-align: left !important;
 
                     &::before {
                         content: attr(data-label);
-                        width: 120px; // Cố định chiều rộng cột label
-                        flex-shrink: 0;
                         font-size: 11px;
                         font-weight: 700;
-                        color: #94a3b8; // Màu label như MyBookings
+                        color: #94a3b8;
                         text-transform: uppercase;
-                        padding-top: 3px;
+                        padding-top: 2px;
                         text-align: left;
                     }
 
-                    &>div {
-                        flex: 1;
-                        min-width: 0;
-                        font-weight: 600; // Đậm hơn cho giá trị
+                    &>div,
+                    &>span,
+                    &>strong {
+                        text-align: left !important;
+                        font-weight: 600;
                         color: #1e293b;
-                        text-align: left; // Căn trái giá trị
                     }
 
                     &:last-child {
                         display: flex;
                         flex-direction: row;
-                        justify-content: flex-end;
-                        margin-top: 12px;
-                        padding: 16px 0 0 0;
+                        margin-top: 8px;
+                        padding: 12px 0 0 0;
                         border-top: 1px solid #f1f5f9;
                         border-bottom: none;
 

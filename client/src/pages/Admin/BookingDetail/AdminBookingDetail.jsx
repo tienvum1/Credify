@@ -199,7 +199,12 @@ const AdminBookingDetail = () => {
 
   const handleUpdateValidity = (isValid) => {
     if (!booking) return;
-    setConfirmValidityModal({ isOpen: true, value: isValid });
+    if (isValid === 'no') {
+      // Bấm KHÔNG → hiện modal nhập lý do, sau đó reject đơn
+      setRejectModal({ isOpen: true, note: '' });
+    } else {
+      setConfirmValidityModal({ isOpen: true, value: isValid });
+    }
   };
 
   const confirmUpdateValidity = async () => {
@@ -450,13 +455,6 @@ const AdminBookingDetail = () => {
               disabled={updating || staffProofs.length === 0}
             >
               {updating ? 'Đang xử lý...' : 'Xác nhận hoàn thành & Gửi bill'}
-            </button>
-            <button 
-              className="reject-btn" 
-              onClick={handleReject}
-              disabled={updating}
-            >
-              Từ chối đơn
             </button>
           </div>
         </div>

@@ -52,7 +52,7 @@ router.patch(
   upload.array("proof", 3),
   staffConfirmBooking
 );
-router.patch("/:id/reject", protect, authorize("staff", "admin_system"), staffRejectBooking);
+router.patch("/:id/reject", protect, authorize("staff", "admin_system", "accountant"), staffRejectBooking);
 
 // Routes dành cho Kế toán
 router.get("/accountant/list", protect, authorize("accountant", "admin_system"), accountantGetBookings);

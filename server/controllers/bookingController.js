@@ -975,8 +975,10 @@ const staffConfirmBooking = async (req, res) => {
 const staffRejectBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const staff_id = req.user.id;
-    const isAdmin = req.user.role === 'admin_system';
+    const user_id = req.user.id;
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin_system';
+    const isAccountant = userRole === 'accountant';
     const rejectNote = String(req.body?.note || "").trim();
 
     if (!rejectNote) {
@@ -993,12 +995,13 @@ const staffRejectBooking = async (req, res) => {
 
     const booking = existingRows[0];
 
-    // Admin có thể từ chối bất kỳ đơn nào; staff chỉ từ chối đơn của mình
-    if (!isAdmin) {
+    // Kiểm tra quyền: admin và accountant có thể reject bất kỳ đơn nào
+    // Staff chỉ reject đơn của mình
+    if (!isAdmin && !isAccountant) {
       if (!booking.staff_id) {
         return res.status(400).json({ message: "Đơn hàng này chưa có nhân viên nhận xử lý" });
       }
-      if (Number(booking.staff_id) !== Number(staff_id)) {
+      if (Number(booking.staff_id) !== Number(user_id)) {
         return res.status(403).json({ message: "Bạn không phải là người đang xử lý đơn hàng này" });
       }
     }
@@ -1007,11 +1010,14 @@ const staffRejectBooking = async (req, res) => {
       return res.status(400).json({ message: "Chỉ được từ chối đơn ở trạng thái khách đã chuyển tiền" });
     }
 
+    // Nếu chưa có staff_id thì gán người reject vào
+    const assignedStaffId = booking.staff_id || user_id;
+
     await pool.query(
       `UPDATE bookings
-       SET status = 'rejected', staff_id = ?, reject_note = ?, confirmed_at = NOW()
+       SET status = 'rejected', staff_id = ?, reject_note = ?, is_valid = 'no', accountant_status = 'rejected', confirmed_at = NOW()
        WHERE id = ?`,
-      [staff_id, rejectNote, bookingId]
+      [assignedStaffId, rejectNote, bookingId]
     );
 
     const [bookingRow] = await pool.query("SELECT customer_id, code FROM bookings WHERE id = ?", [bookingId]);
@@ -1041,7 +1047,7 @@ const accountantGetBookings = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Lấy tất cả đơn mà khách đã chuyển tiền (đã up bill)
-    let whereSql = "WHERE b.status IN ('customer_paid', 'staff_confirmed')";
+    let whereSql = "WHERE b.status IN ('customer_paid', 'staff_confirmed', 'rejected')";
     const params = [];
 
     if (status === 'pending') {

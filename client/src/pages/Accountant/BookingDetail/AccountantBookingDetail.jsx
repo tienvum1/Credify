@@ -18,6 +18,7 @@ const AccountantBookingDetail = () => {
   const [updating, setUpdating] = useState(false);
   const [validityUpdating, setValidityUpdating] = useState(false);
   const [validityModal, setValidityModal] = useState(null); // 'yes' | 'no' | null
+  const [rejectModal, setRejectModal] = useState({ isOpen: false, note: '' });
   const [lightbox, setLightbox] = useState(null); // URL đang xem phóng to
 
   useEffect(() => {
@@ -75,6 +76,11 @@ const AccountantBookingDetail = () => {
 
   const handleUpdateValidity = async (value) => {
     if (booking.is_valid !== null) return;
+    if (value === 'no') {
+      // Bấm KHÔNG → hiện modal nhập lý do
+      setRejectModal({ isOpen: true, note: '' });
+      return;
+    }
     setValidityUpdating(true);
     try {
       await api.patch(`/bookings/${id}/validity`, { is_valid: value });
@@ -83,14 +89,32 @@ const AccountantBookingDetail = () => {
         is_valid: value,
         accountant_status: value === 'yes'
           ? (prev.accountant_status === null ? 'pending' : prev.accountant_status)
-          : (prev.accountant_status === 'pending' ? 'rejected' : prev.accountant_status)
+          : prev.accountant_status
       }));
-      toast.success(`Đã xác nhận: ${value === 'yes' ? 'CÓ' : 'KHÔNG'}`);
+      toast.success('Đã xác nhận: CÓ');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi khi xác nhận');
     } finally {
       setValidityUpdating(false);
       setValidityModal(null);
+    }
+  };
+
+  const confirmReject = async () => {
+    if (!rejectModal.note.trim()) {
+      toast.error('Vui lòng nhập lý do');
+      return;
+    }
+    setValidityUpdating(true);
+    try {
+      await api.patch(`/bookings/${id}/reject`, { note: rejectModal.note.trim() });
+      toast.success('Đã xác nhận: KHÔNG — Đơn bị từ chối');
+      setRejectModal({ isOpen: false, note: '' });
+      window.location.reload();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi từ chối');
+    } finally {
+      setValidityUpdating(false);
     }
   };
 
@@ -318,7 +342,7 @@ const AccountantBookingDetail = () => {
                     </button>
                     <button
                       className="validity-btn no"
-                      onClick={() => setValidityModal('no')}
+                      onClick={() => setRejectModal({ isOpen: true, note: '' })}
                       disabled={validityUpdating}
                     >
                       <XCircle size={16} /> KHÔNG
@@ -458,6 +482,47 @@ const AccountantBookingDetail = () => {
                 disabled={validityUpdating}
               >
                 {validityUpdating ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject modal (nhập lý do khi bấm KHÔNG) ── */}
+      {rejectModal.isOpen && (
+        <div className="acc-lightbox" onClick={() => !validityUpdating && setRejectModal({ isOpen: false, note: '' })}>
+          <div className="validity-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon no">
+              <XCircle size={32} />
+            </div>
+            <h3>Lý do từ chối</h3>
+            <p>Vui lòng nhập lý do tại sao đơn này không hợp lệ:</p>
+            <textarea
+              style={{
+                width: '100%', minHeight: '90px', padding: '10px 12px',
+                borderRadius: '10px', border: '1px solid #e2e8f0',
+                fontSize: '14px', resize: 'vertical', marginTop: '8px',
+                boxSizing: 'border-box', outline: 'none'
+              }}
+              placeholder="Nhập lý do từ chối..."
+              value={rejectModal.note}
+              onChange={e => setRejectModal(prev => ({ ...prev, note: e.target.value }))}
+              autoFocus
+            />
+            <div className="modal-actions" style={{ marginTop: '16px' }}>
+              <button
+                className="modal-cancel"
+                onClick={() => setRejectModal({ isOpen: false, note: '' })}
+                disabled={validityUpdating}
+              >
+                Huỷ
+              </button>
+              <button
+                className="modal-confirm no"
+                onClick={confirmReject}
+                disabled={validityUpdating || !rejectModal.note.trim()}
+              >
+                {validityUpdating ? 'Đang lưu...' : 'Xác nhận từ chối'}
               </button>
             </div>
           </div>
