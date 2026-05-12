@@ -123,10 +123,6 @@ const AccountantQRManager = () => {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Ảnh đại diện (để trống nếu không đổi)</label>
-              <input type="file" accept="image/*" onChange={(e) => setMainImageFile(e.target.files[0])} />
-            </div>
-            <div className="form-group">
               <label>Ảnh mã QR (để trống nếu không đổi)</label>
               <input type="file" accept="image/*" onChange={(e) => setQrImageFile(e.target.files[0])} />
             </div>

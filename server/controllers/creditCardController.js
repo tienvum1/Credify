@@ -1,183 +1,195 @@
 const pool = require('../config/db').pool;
 
-// Lấy danh sách tất cả các thẻ (Dành cho Dashboard Staff - Quản lý độc lập)
+// Tính số ngày còn lại đến ngày đến hạn
+const calcDaysLeft = (dueDay) => {
+  if (!dueDay) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  let due = new Date(year, month, dueDay);
+  due.setHours(0, 0, 0, 0);
+  // Nếu ngày đến hạn đã qua trong tháng này → tính sang tháng sau
+  if (due < today) {
+    due = new Date(year, month + 1, dueDay);
+    due.setHours(0, 0, 0, 0);
+  }
+  return Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+};
+
+const calcStatus = (daysLeft) => {
+  if (daysLeft === null) return '—';
+  if (daysLeft <= 3) return '🔴 Sắp đến hạn';
+  if (daysLeft <= 7) return '🟡 Cần theo dõi';
+  return '🟢 An toàn';
+};
+
+const enrichCard = (row) => {
+  const daysLeft = calcDaysLeft(row.due_day);
+  const feeVnd = Math.round((row.roll_amount || 0) * (row.fee_percent || 0));
+  const profit = Math.round((row.roll_amount || 0) * ((row.fee_percent || 0) - (row.bank_fee_percent || 0)));
+  return {
+    ...row,
+    fee_vnd: feeVnd,
+    profit,
+    days_left: daysLeft,
+    status_label: calcStatus(daysLeft),
+  };
+};
+
+// GET /credit-cards/dashboard
 exports.getDashboardStats = async (req, res) => {
   try {
-    const { search, filter } = req.query;
-    
-    let query = `
-      SELECT * FROM credit_cards
-      WHERE 1=1
-    `;
-    
+    const { search = '', filter = '', card_type = '' } = req.query;
+
+    let where = 'WHERE 1=1';
     const params = [];
+
     if (search) {
-      query += ` AND (customer_name LIKE ? OR bank_name LIKE ? OR card_last_4 LIKE ?)`;
+      where += ' AND (customer_name LIKE ? OR bank_name LIKE ? OR card_last_4 LIKE ?)';
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
+    if (card_type) {
+      where += ' AND card_type = ?';
+      params.push(card_type);
+    }
 
-    const [rows] = await pool.query(query, params);
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const [rows] = await pool.query(
+      `SELECT * FROM credit_cards ${where} ORDER BY due_day ASC, id DESC`,
+      params
+    );
 
-    const cards = rows.map(row => {
-      const rollDate = row.roll_date ? new Date(row.roll_date) : null;
-      const dueDate = row.due_date ? new Date(row.due_date) : null;
-      
-      let daysLeft = '—';
-      if (dueDate) {
-        dueDate.setHours(0, 0, 0, 0);
-        const diffTime = dueDate - today;
-        daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      }
+    let cards = rows.map(enrichCard);
 
-      const feeVnd = (row.roll_amount * row.fee_percent) / 100;
-      const profit = (row.roll_amount * (row.fee_percent - row.bank_fee_percent)) / 100;
+    // Filter theo trạng thái
+    if (filter === 'due_today')  cards = cards.filter(c => c.days_left === 0);
+    if (filter === 'due_3_days') cards = cards.filter(c => c.days_left !== null && c.days_left >= 0 && c.days_left <= 3);
+    if (filter === 'overdue')    cards = cards.filter(c => c.days_left !== null && c.days_left < 0);
+    if (filter === 'done')       cards = cards.filter(c => c.is_done === 1);
+    if (filter === 'pending')    cards = cards.filter(c => c.is_done === 0);
 
-      return {
-        ...row,
-        days_left: daysLeft,
-        fee_vnd: feeVnd,
-        profit: profit
-      };
-    });
+    // Tổng hợp
+    const summary = {
+      total: cards.length,
+      total_roll: cards.reduce((s, c) => s + Number(c.roll_amount || 0), 0),
+      total_fee_vnd: cards.reduce((s, c) => s + Number(c.fee_vnd || 0), 0),
+      total_profit: cards.reduce((s, c) => s + Number(c.profit || 0), 0),
+      danger_count: cards.filter(c => c.days_left !== null && c.days_left <= 3).length,
+    };
 
-    // Áp dụng filter
-    const filteredCards = cards.filter(card => {
-      if (filter === 'due_today') return card.days_left === 0;
-      if (filter === 'due_3_days') return card.days_left >= 0 && card.days_left <= 3;
-      if (filter === 'overdue') return card.days_left < 0;
-      return true;
-    });
-
-    res.json({ success: true, data: filteredCards });
-  } catch (error) {
-    console.error('Get Dashboard Stats Error:', error);
+    res.json({ success: true, data: cards, summary });
+  } catch (err) {
+    console.error('getDashboardStats error:', err);
     res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
   }
 };
 
-// Lấy danh sách khách hàng (Bỏ qua vì không dùng user hệ thống nữa)
-exports.getAllUsers = async (req, res) => {
-  res.json({ success: true, data: [] });
-};
-
-// Thêm thẻ mới
+// POST /credit-cards/add
 exports.addCard = async (req, res) => {
   try {
-    const { 
-      customer_name, bank_name, card_last_4, credit_limit, 
-      roll_amount, fee_percent, bank_fee_percent, 
-      statement_date, due_date, roll_date, status 
+    const {
+      card_type, customer_name, bank_name, card_last_4,
+      credit_limit, roll_amount, fee_percent, bank_fee_percent,
+      statement_day, due_day, roll_date, note, is_done
     } = req.body;
-    
+
+    if (!customer_name || !bank_name) {
+      return res.status(400).json({ success: false, message: 'Thiếu tên khách hoặc ngân hàng' });
+    }
+
     await pool.query(
-      `INSERT INTO credit_cards (
-        customer_name, bank_name, card_last_4, credit_limit, 
-        roll_amount, fee_percent, bank_fee_percent, 
-        statement_date, due_date, roll_date, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO credit_cards
+        (card_type, customer_name, bank_name, card_last_4,
+         credit_limit, roll_amount, fee_percent, bank_fee_percent,
+         statement_day, due_day, roll_date, note, is_done)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        customer_name, bank_name, card_last_4, credit_limit || 0, 
-        roll_amount || 0, fee_percent || 0, bank_fee_percent || 0, 
-        statement_date, due_date, roll_date, status || 'An toàn'
+        card_type || 'QR',
+        customer_name.trim(),
+        bank_name.trim(),
+        card_last_4 || null,
+        credit_limit || 0,
+        roll_amount || 0,
+        fee_percent || 0,
+        bank_fee_percent || 0,
+        statement_day || null,
+        due_day || null,
+        roll_date || null,
+        note || null,
+        is_done ? 1 : 0,
       ]
     );
 
     res.json({ success: true, message: 'Thêm thẻ thành công' });
-  } catch (error) {
-    console.error('Add Card Error:', error);
+  } catch (err) {
+    console.error('addCard error:', err);
     res.status(500).json({ success: false, message: 'Lỗi khi thêm thẻ' });
   }
 };
 
-// Cập nhật thông tin thẻ
+// PUT /credit-cards/:id
 exports.updateCard = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      customer_name, bank_name, card_last_4, credit_limit, 
-      roll_amount, fee_percent, bank_fee_percent, 
-      statement_date, due_date, roll_date, status 
+    const {
+      card_type, customer_name, bank_name, card_last_4,
+      credit_limit, roll_amount, fee_percent, bank_fee_percent,
+      statement_day, due_day, roll_date, note, is_done
     } = req.body;
 
     await pool.query(
-      `UPDATE credit_cards 
-       SET customer_name = ?, bank_name = ?, card_last_4 = ?, credit_limit = ?, 
-           roll_amount = ?, fee_percent = ?, bank_fee_percent = ?, 
-           statement_date = ?, due_date = ?, roll_date = ?, status = ?
+      `UPDATE credit_cards SET
+        card_type = ?, customer_name = ?, bank_name = ?, card_last_4 = ?,
+        credit_limit = ?, roll_amount = ?, fee_percent = ?, bank_fee_percent = ?,
+        statement_day = ?, due_day = ?, roll_date = ?, note = ?, is_done = ?
        WHERE id = ?`,
       [
-        customer_name, bank_name, card_last_4, credit_limit, 
-        roll_amount, fee_percent, bank_fee_percent, 
-        statement_date, due_date, roll_date, status, id
+        card_type || 'QR',
+        customer_name.trim(),
+        bank_name.trim(),
+        card_last_4 || null,
+        credit_limit || 0,
+        roll_amount || 0,
+        fee_percent || 0,
+        bank_fee_percent || 0,
+        statement_day || null,
+        due_day || null,
+        roll_date || null,
+        note || null,
+        is_done ? 1 : 0,
+        id,
       ]
     );
 
-    res.json({ success: true, message: 'Cập nhật thẻ thành công' });
-  } catch (error) {
-    console.error('Update Card Error:', error);
+    res.json({ success: true, message: 'Cập nhật thành công' });
+  } catch (err) {
+    console.error('updateCard error:', err);
     res.status(500).json({ success: false, message: 'Lỗi khi cập nhật thẻ' });
   }
 };
 
-// Xóa thẻ
+// PATCH /credit-cards/:id/toggle-done
+exports.toggleDone = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(
+      'UPDATE credit_cards SET is_done = NOT is_done WHERE id = ?',
+      [id]
+    );
+    res.json({ success: true, message: 'Cập nhật trạng thái thành công' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// DELETE /credit-cards/:id
 exports.deleteCard = async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM credit_cards WHERE id = ?', [id]);
     res.json({ success: true, message: 'Xóa thẻ thành công' });
-  } catch (error) {
-    console.error('Delete Card Error:', error);
+  } catch (err) {
+    console.error('deleteCard error:', err);
     res.status(500).json({ success: false, message: 'Lỗi khi xóa thẻ' });
-  }
-};
-
-// Lấy lịch sử thanh toán của thẻ
-exports.getPaymentHistory = async (req, res) => {
-  try {
-    const { cardId } = req.params;
-    const [rows] = await pool.query(
-      'SELECT * FROM payment_history WHERE card_id = ? ORDER BY payment_date DESC',
-      [cardId]
-    );
-    res.json({ success: true, data: rows });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi lấy lịch sử thanh toán' });
-  }
-};
-
-// Thêm thanh toán mới
-exports.addPayment = async (req, res) => {
-  try {
-    const { card_id, amount, note } = req.body;
-    
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    try {
-      // Lưu lịch sử
-      await connection.query(
-        'INSERT INTO payment_history (card_id, amount, note) VALUES (?, ?, ?)',
-        [card_id, amount, note]
-      );
-
-      // Cập nhật số dư thẻ (giảm nợ)
-      await connection.query(
-        'UPDATE credit_cards SET current_balance = current_balance - ? WHERE id = ?',
-        [amount, card_id]
-      );
-
-      await connection.commit();
-      res.json({ success: true, message: 'Thanh toán thành công' });
-    } catch (err) {
-      await connection.rollback();
-      throw err;
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi thực hiện thanh toán' });
   }
 };

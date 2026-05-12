@@ -72,26 +72,67 @@ const initDB = async () => {
     `);
 
     // ── 3. Tạo bảng credit_cards ─────────────────────────────────────────────
+    // Dùng ALTER TABLE để thêm cột mới thay vì DROP (tránh lỗi FK)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS credit_cards (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        customer_name VARCHAR(255) NOT NULL,
-        bank_name VARCHAR(100) NOT NULL,
-        card_last_4 VARCHAR(10) NOT NULL,
-        credit_limit DECIMAL(15, 2) DEFAULT 0,
-        roll_amount DECIMAL(15, 2) DEFAULT 0,
-        fee_percent DECIMAL(5, 2) DEFAULT 0,
-        bank_fee_percent DECIMAL(5, 2) DEFAULT 0,
-        statement_date DATE NULL,
-        due_date DATE NULL,
+        card_type ENUM('QR', 'Máy POS', 'Tôi') NOT NULL DEFAULT 'QR',
+        customer_name VARCHAR(255) NOT NULL DEFAULT '',
+        bank_name VARCHAR(100) NOT NULL DEFAULT '',
+        card_last_4 VARCHAR(4) NULL,
+        credit_limit DECIMAL(15,2) NOT NULL DEFAULT 0,
+        roll_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+        fee_percent DECIMAL(6,4) NOT NULL DEFAULT 0,
+        bank_fee_percent DECIMAL(6,4) NOT NULL DEFAULT 0,
+        statement_day TINYINT NULL,
+        due_day TINYINT NULL,
         roll_date DATE NULL,
-        status VARCHAR(50) DEFAULT 'An toàn',
+        note TEXT NULL,
+        is_done TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_cc_status (status),
-        INDEX idx_cc_created (created_at)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Migrate: thêm cột mới nếu chưa có
+    const [ccCols] = await connection.query(`SHOW COLUMNS FROM credit_cards`);
+    const ccColNames = ccCols.map(c => c.Field);
+    const addColIfMissing = async (col, def) => {
+      if (!ccColNames.includes(col)) {
+        await connection.query(`ALTER TABLE credit_cards ADD COLUMN ${col} ${def}`);
+      }
+    };
+    await addColIfMissing('card_type',        `ENUM('QR', 'Máy POS', 'Tôi') NOT NULL DEFAULT 'QR' AFTER id`);
+    await addColIfMissing('customer_name',    `VARCHAR(255) NOT NULL DEFAULT '' AFTER card_type`);
+    await addColIfMissing('bank_name',        `VARCHAR(100) NOT NULL DEFAULT ''`);
+    await addColIfMissing('card_last_4',      `VARCHAR(4) NULL`);
+    await addColIfMissing('credit_limit',     `DECIMAL(15,2) NOT NULL DEFAULT 0`);
+    await addColIfMissing('roll_amount',      `DECIMAL(15,2) NOT NULL DEFAULT 0`);
+    await addColIfMissing('fee_percent',      `DECIMAL(6,4) NOT NULL DEFAULT 0`);
+    await addColIfMissing('bank_fee_percent', `DECIMAL(6,4) NOT NULL DEFAULT 0`);
+    await addColIfMissing('statement_day',    `TINYINT NULL`);
+    await addColIfMissing('due_day',          `TINYINT NULL`);
+    await addColIfMissing('roll_date',        `DATE NULL`);
+    await addColIfMissing('note',             `TEXT NULL`);
+    await addColIfMissing('is_done',          `TINYINT(1) NOT NULL DEFAULT 0`);
+
+    // Fix cột user_id cũ nếu còn tồn tại — set default = 0 để không bắt buộc
+    try {
+      await connection.query(`ALTER TABLE credit_cards MODIFY COLUMN user_id INT NULL DEFAULT NULL`);
+    } catch (_) { /* cột không tồn tại thì bỏ qua */ }
+
+    // Fix tất cả cột cũ còn lại có thể gây lỗi NOT NULL
+    const oldColFixes = [
+      `ALTER TABLE credit_cards MODIFY COLUMN card_number VARCHAR(20) NULL DEFAULT NULL`,
+      `ALTER TABLE credit_cards MODIFY COLUMN current_balance DECIMAL(15,2) NULL DEFAULT 0`,
+      `ALTER TABLE credit_cards MODIFY COLUMN minimum_payment DECIMAL(15,2) NULL DEFAULT 0`,
+      `ALTER TABLE credit_cards MODIFY COLUMN statement_date DATE NULL DEFAULT NULL`,
+      `ALTER TABLE credit_cards MODIFY COLUMN due_date DATE NULL DEFAULT NULL`,
+      `ALTER TABLE credit_cards MODIFY COLUMN status VARCHAR(50) NULL DEFAULT 'An toàn'`,
+    ];
+    for (const sql of oldColFixes) {
+      try { await connection.query(sql); } catch (_) {}
+    }
 
     // ── 4. Tạo bảng bookings ─────────────────────────────────────────────────
     await connection.query(`
