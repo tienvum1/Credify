@@ -297,6 +297,7 @@ const BookingPayment = () => {
                     <input
                       type="file"
                       accept="image/*"
+                      capture="environment"
                       onChange={handleFileChange}
                       disabled={booking.status !== 'created' || submittingPaid || timeLeft === 0}
                     />
@@ -330,6 +331,7 @@ const BookingPayment = () => {
                     <input
                       type="file"
                       accept="image/*"
+                      capture="environment"
                       onChange={handleIdCardChange}
                       disabled={booking.status !== 'created' || submittingPaid || timeLeft === 0}
                     />
