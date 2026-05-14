@@ -1,19 +1,57 @@
 const pool = require('../config/db').pool;
 
-// Tính số ngày còn lại đến ngày đến hạn
-const calcDaysLeft = (dueDay) => {
-  if (!dueDay) return null;
+// Parse DATE từ MySQL (Date object hoặc string) thành local Date
+const parseLocalDate = (dateVal) => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) {
+    return new Date(dateVal.getFullYear(), dateVal.getMonth(), dateVal.getDate());
+  }
+  const [y, m, d] = String(dateVal).substring(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// Tính ngày tiếp theo từ một ngày cụ thể (cộng tháng cho đến khi chưa qua)
+const nextOccurrence = (dateVal) => {
+  if (!dateVal) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  let due = new Date(year, month, dueDay);
-  due.setHours(0, 0, 0, 0);
-  // Nếu ngày đến hạn đã qua trong tháng này → tính sang tháng sau
-  if (due < today) {
-    due = new Date(year, month + 1, dueDay);
-    due.setHours(0, 0, 0, 0);
+  const date = parseLocalDate(dateVal);
+  date.setHours(0, 0, 0, 0);
+  // Cộng tháng cho đến khi ngày >= hôm nay
+  while (date < today) {
+    date.setMonth(date.getMonth() + 1);
   }
+  return date;
+};
+
+// Ngày sao kê: chuyển tháng cùng số lần với ngày đến hạn
+const stmtWithDue = (stmtVal, dueVal) => {
+  if (!stmtVal) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = parseLocalDate(dueVal);
+  const stmt = parseLocalDate(stmtVal);
+  if (!due || !stmt) return stmt;
+  due.setHours(0, 0, 0, 0);
+  stmt.setHours(0, 0, 0, 0);
+  // Đếm số tháng cần cộng cho due để >= today
+  let months = 0;
+  const dueCopy = new Date(due);
+  while (dueCopy < today) {
+    dueCopy.setMonth(dueCopy.getMonth() + 1);
+    months++;
+  }
+  // Cộng cùng số tháng cho stmt
+  stmt.setMonth(stmt.getMonth() + months);
+  return stmt;
+};
+
+// Tính số ngày còn lại đến ngày đến hạn
+const calcDaysLeft = (dueDateStr) => {
+  if (!dueDateStr) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = nextOccurrence(dueDateStr);
   return Math.ceil((due - today) / (1000 * 60 * 60 * 24));
 };
 
@@ -28,12 +66,30 @@ const enrichCard = (row) => {
   const daysLeft = calcDaysLeft(row.due_day);
   const feeVnd = Math.round((row.roll_amount || 0) * (row.fee_percent || 0));
   const profit = Math.round((row.roll_amount || 0) * ((row.fee_percent || 0) - (row.bank_fee_percent || 0)));
+
+  const fmtDate = (d) => d ? d.toLocaleDateString('vi-VN') : null;
+
+  // Parse DATE từ MySQL (Date object hoặc string) thành local date string
+  const parseLocalDate = (dateVal) => {
+    if (!dateVal) return null;
+    if (dateVal instanceof Date) {
+      return dateVal.toLocaleDateString('vi-VN');
+    }
+    const [y, m, d] = String(dateVal).substring(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('vi-VN');
+  };
+
   return {
     ...row,
     fee_vnd: feeVnd,
     profit,
     days_left: daysLeft,
     status_label: calcStatus(daysLeft),
+    // Ngày sao kê: chuyển tháng cùng với ngày đến hạn
+    statement_date_full: fmtDate(stmtWithDue(row.statement_day, row.due_day)),
+    // Ngày đến hạn: tự chuyển tháng sau nếu đã qua
+    due_date_full: fmtDate(nextOccurrence(row.due_day)),
+    roll_date_fmt: parseLocalDate(row.roll_date),
   };
 };
 

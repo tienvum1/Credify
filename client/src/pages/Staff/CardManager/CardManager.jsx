@@ -75,12 +75,12 @@ export default function CardManager() {
       customer_name: card.customer_name || '',
       bank_name: card.bank_name || '',
       card_last_4: card.card_last_4 || '',
-      credit_limit: card.credit_limit || '',
-      roll_amount: card.roll_amount || '',
+      credit_limit: card.credit_limit ? Math.round(Number(card.credit_limit)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '',
+      roll_amount: card.roll_amount ? Math.round(Number(card.roll_amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '',
       fee_percent: card.fee_percent != null ? (Number(card.fee_percent) * 100).toFixed(4).replace(/\.?0+$/, '') : '',
       bank_fee_percent: card.bank_fee_percent != null ? (Number(card.bank_fee_percent) * 100).toFixed(4).replace(/\.?0+$/, '') : '',
-      statement_day: card.statement_day || '',
-      due_day: card.due_day || '',
+      statement_day: card.statement_day ? card.statement_day.split('T')[0] : '',
+      due_day: card.due_day ? card.due_day.split('T')[0] : '',
       roll_date: card.roll_date ? card.roll_date.split('T')[0] : '',
       note: card.note || '',
       is_done: !!card.is_done,
@@ -94,10 +94,11 @@ export default function CardManager() {
       ...form,
       fee_percent: form.fee_percent ? Number(form.fee_percent) / 100 : 0,
       bank_fee_percent: form.bank_fee_percent ? Number(form.bank_fee_percent) / 100 : 0,
-      credit_limit: Number(form.credit_limit) || 0,
-      roll_amount: Number(form.roll_amount) || 0,
-      statement_day: form.statement_day ? Number(form.statement_day) : null,
-      due_day: form.due_day ? Number(form.due_day) : null,
+      credit_limit: parseMoney(form.credit_limit),
+      roll_amount: parseMoney(form.roll_amount),
+      // Gửi thẳng date string, không extract số ngày
+      statement_day: form.statement_day || null,
+      due_day: form.due_day || null,
       roll_date: form.roll_date || null,
       is_done: form.is_done ? 1 : 0,
     };
@@ -137,6 +138,16 @@ export default function CardManager() {
   };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Format số tiền khi nhập: tự thêm dấu chấm
+  const setMoney = (k, raw) => {
+    const digits = raw.replace(/\./g, '').replace(/\D/g, '');
+    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    setForm(f => ({ ...f, [k]: formatted }));
+  };
+
+  // Lấy giá trị số thực từ string có dấu chấm
+  const parseMoney = (v) => Number(String(v).replace(/\./g, '')) || 0;
 
   return (
     <div className="cm-page">
@@ -244,15 +255,15 @@ export default function CardManager() {
                   <td className="name-cell">{c.customer_name}</td>
                   <td>{c.bank_name}</td>
                   <td className="mono">{c.card_last_4 || '—'}</td>
-                  <td className="num">{fmt(c.credit_limit)}</td>
+                  <td className="num bold">{fmt(c.credit_limit)}</td>
                   <td className="num bold">{fmt(c.roll_amount)}</td>
                   <td className="num">{fmtPct(c.fee_percent)}</td>
                   <td className="num">{fmtPct(c.bank_fee_percent)}</td>
                   <td className="num fee">{fmt(c.fee_vnd)}</td>
                   <td className="num profit">{fmt(c.profit)}</td>
-                  <td className="center">{c.statement_day ? `Ngày ${c.statement_day}` : '—'}</td>
-                  <td className="center">{c.due_day ? `Ngày ${c.due_day}` : '—'}</td>
-                  <td className="center">{c.roll_date ? new Date(c.roll_date).toLocaleDateString('vi-VN') : '—'}</td>
+                  <td className="center">{c.statement_date_full || '—'}</td>
+                  <td className="center">{c.due_date_full || '—'}</td>
+                  <td className="center">{c.roll_date_fmt || '—'}</td>
                   <td className="num">
                     {c.days_left !== null ? (
                       <span className={`days-badge ${c.days_left <= 3 ? 'danger' : c.days_left <= 7 ? 'warn' : 'safe'}`}>
@@ -266,9 +277,8 @@ export default function CardManager() {
                     <button
                       className={`done-btn ${c.is_done ? 'done' : ''}`}
                       onClick={() => handleToggleDone(c.id)}
-                      title={c.is_done ? 'Đánh dấu chưa xong' : 'Đánh dấu xong'}
                     >
-                      <CheckCircle2 size={18} />
+                      {c.is_done ? 'Xong' : 'Chưa xong'}
                     </button>
                   </td>
                   <td>
@@ -336,11 +346,11 @@ export default function CardManager() {
 
               <div className="fg">
                 <label>Hạn mức (VNĐ)</label>
-                <input type="number" value={form.credit_limit} onChange={e => set('credit_limit', e.target.value)} placeholder="0" />
+                <input type="text" inputMode="numeric" value={form.credit_limit} onChange={e => setMoney('credit_limit', e.target.value)} placeholder="VD: 50.000.000" />
               </div>
               <div className="fg">
                 <label>Số tiền đáo (VNĐ)</label>
-                <input type="number" value={form.roll_amount} onChange={e => set('roll_amount', e.target.value)} placeholder="0" />
+                <input type="text" inputMode="numeric" value={form.roll_amount} onChange={e => setMoney('roll_amount', e.target.value)} placeholder="VD: 45.000.000" />
               </div>
 
               <div className="fg">
@@ -353,12 +363,12 @@ export default function CardManager() {
               </div>
 
               <div className="fg">
-                <label>Ngày sao kê (1-31)</label>
-                <input type="number" min={1} max={31} value={form.statement_day} onChange={e => set('statement_day', e.target.value)} placeholder="VD: 20" />
+                <label>Ngày sao kê</label>
+                <input type="date" value={form.statement_day} onChange={e => set('statement_day', e.target.value)} />
               </div>
               <div className="fg">
-                <label>Ngày đến hạn (1-31)</label>
-                <input type="number" min={1} max={31} value={form.due_day} onChange={e => set('due_day', e.target.value)} placeholder="VD: 5" />
+                <label>Ngày đến hạn</label>
+                <input type="date" value={form.due_day} onChange={e => set('due_day', e.target.value)} />
               </div>
 
               <div className="fg">

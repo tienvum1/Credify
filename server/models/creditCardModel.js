@@ -18,9 +18,9 @@ const creditCardFields = {
   // fee_vnd = roll_amount * fee_percent  (tính động)
   // profit  = (fee_percent - bank_fee_percent) * roll_amount (tính động)
 
-  // Ngày (lưu ngày trong tháng, 1-31)
-  statement_day: 'TINYINT NULL',   // Ngày sao kê
-  due_day: 'TINYINT NULL',         // Ngày đến hạn thanh toán
+  // Ngày (lưu ngày đầy đủ để tính chính xác)
+  statement_day: 'DATE NULL',   // Ngày sao kê (ngày cụ thể, tự động tính tháng tiếp theo khi hiển thị)
+  due_day: 'DATE NULL',         // Ngày đến hạn thanh toán (ngày cụ thể)
   roll_date: 'DATE NULL',          // Ngày đáo thực tế (ngày cụ thể)
 
   // Ghi chú & trạng thái

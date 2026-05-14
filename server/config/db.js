@@ -110,8 +110,16 @@ const initDB = async () => {
     await addColIfMissing('roll_amount',      `DECIMAL(15,2) NOT NULL DEFAULT 0`);
     await addColIfMissing('fee_percent',      `DECIMAL(6,4) NOT NULL DEFAULT 0`);
     await addColIfMissing('bank_fee_percent', `DECIMAL(6,4) NOT NULL DEFAULT 0`);
-    await addColIfMissing('statement_day',    `TINYINT NULL`);
-    await addColIfMissing('due_day',          `TINYINT NULL`);
+    await addColIfMissing('statement_day',    `DATE NULL`);
+    await addColIfMissing('due_day',          `DATE NULL`);
+
+    // Đảm bảo statement_day và due_day là DATE (không phải TINYINT)
+    const [ccColTypes] = await connection.query(`SHOW COLUMNS FROM credit_cards WHERE Field IN ('statement_day', 'due_day')`);
+    for (const col of ccColTypes) {
+      if (col.Type.toLowerCase() !== 'date') {
+        await connection.query(`ALTER TABLE credit_cards MODIFY COLUMN ${col.Field} DATE NULL`);
+      }
+    }
     await addColIfMissing('roll_date',        `DATE NULL`);
     await addColIfMissing('note',             `TEXT NULL`);
     await addColIfMissing('is_done',          `TINYINT(1) NOT NULL DEFAULT 0`);
