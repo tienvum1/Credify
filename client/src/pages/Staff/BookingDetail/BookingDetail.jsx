@@ -308,7 +308,6 @@ const BookingDetail = () => {
                   <input 
                     type="file" 
                     accept="image/*"
-                    capture="environment"
                     onChange={handleStaffFileChange}
                     disabled={updating || !isAssignedStaff}
                   />

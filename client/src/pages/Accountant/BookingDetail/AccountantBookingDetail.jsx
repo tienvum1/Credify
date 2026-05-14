@@ -388,7 +388,6 @@ const AccountantBookingDetail = () => {
                             type="file"
                             hidden
                             accept="image/*"
-                            capture="environment"
                             onChange={handleFileChange}
                           />
                           <Upload size={22} />

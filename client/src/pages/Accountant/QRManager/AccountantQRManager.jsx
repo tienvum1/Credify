@@ -110,13 +110,13 @@ const AccountantQRManager = () => {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Ảnh đại diện (để trống nếu không đổi)</label>
-              <input type="file" accept="image/*" capture="environment" onChange={(e) => setMainImageFile(e.target.files[0])} />
-            </div>
-            <div className="form-group">
-              <label>Ảnh mã QR (để trống nếu không đổi)</label>
-              <input type="file" accept="image/*" capture="environment" onChange={(e) => setQrImageFile(e.target.files[0])} />
-            </div>
+               <label>Ảnh đại diện (để trống nếu không đổi)</label>
+               <input type="file" accept="image/*" onChange={(e) => setMainImageFile(e.target.files[0])} />
+             </div>
+             <div className="form-group">
+               <label>Ảnh mã QR (để trống nếu không đổi)</label>
+               <input type="file" accept="image/*" onChange={(e) => setQrImageFile(e.target.files[0])} />
+             </div>
             <div className="form-group">
               <label>Hạn mức tối đa (VNĐ)</label>
               <input type="text" value={maxAmount} onChange={handleMaxAmountChange} required placeholder="Ví dụ: 4.000.000" />

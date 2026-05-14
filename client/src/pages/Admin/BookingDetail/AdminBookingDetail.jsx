@@ -432,7 +432,6 @@ const AdminBookingDetail = () => {
                 <input 
                   type="file" 
                   accept="image/*" 
-                  capture="environment"
                   onChange={handleStaffFileChange}
                   hidden 
                 />
