@@ -547,7 +547,7 @@ const Profile = () => {
                     <label className="qr-upload-box">
                       <input
                         type="file"
-                        accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
+                        accept="image/*"
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (file) {

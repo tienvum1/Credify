@@ -111,7 +111,7 @@ const AccountantQRManager = () => {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Ảnh mã QR (để trống nếu không đổi)</label>
-              <input type="file" accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp" onChange={(e) => setQrImageFile(e.target.files[0])} />
+              <input type="file" accept="image/*" onChange={(e) => setQrImageFile(e.target.files[0])} />
             </div>
             <div className="form-group">
               <label>Hạn mức tối đa (VNĐ)</label>

@@ -307,7 +307,7 @@ const BookingDetail = () => {
                 <label className="staff-file-upload-box">
                   <input 
                     type="file" 
-                    accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
+                    accept="image/*"
                     onChange={handleStaffFileChange}
                     disabled={updating || !isAssignedStaff}
                   />

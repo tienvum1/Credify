@@ -296,7 +296,7 @@ const BookingPayment = () => {
                   <label className="file-upload-box">
                     <input
                       type="file"
-                      accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
+                      accept="image/*"
                       onChange={handleFileChange}
                       disabled={booking.status !== 'created' || submittingPaid || timeLeft === 0}
                     />
@@ -329,7 +329,7 @@ const BookingPayment = () => {
                   <label className="file-upload-box">
                     <input
                       type="file"
-                      accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
+                      accept="image/*"
                       onChange={handleIdCardChange}
                       disabled={booking.status !== 'created' || submittingPaid || timeLeft === 0}
                     />
