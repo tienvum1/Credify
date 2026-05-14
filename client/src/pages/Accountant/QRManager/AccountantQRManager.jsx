@@ -15,13 +15,7 @@ const AccountantQRManager = () => {
   // Form states
   const [mainImageFile, setMainImageFile] = useState(null);
   const [qrImageFile, setQrImageFile] = useState(null);
-  const [qrName, setQrName] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
-  const [feeRate, setFeeRate] = useState('');
-  const [feeRateL1, setFeeRateL1] = useState('');
-  const [feeRateL2, setFeeRateL2] = useState('');
-  const [feeRateL3, setFeeRateL3] = useState('');
-  const [note, setNote] = useState('');
 
   const refreshQRs = async () => {
     try {
@@ -52,26 +46,19 @@ const AccountantQRManager = () => {
 
   const handleEdit = (qr) => {
     setEditingQr(qr);
-    setQrName(qr.name || '');
     setMaxAmount(
       qr.max_amount_per_trans
         ? Math.round(qr.max_amount_per_trans).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
         : ''
     );
-    setFeeRate(qr.fee_rate ?? '');
-    setFeeRateL1(qr.fee_rate_l1 ?? '');
-    setFeeRateL2(qr.fee_rate_l2 ?? '');
-    setFeeRateL3(qr.fee_rate_l3 ?? '');
-    setNote(qr.note || '');
     setMainImageFile(null);
     setQrImageFile(null);
   };
 
   const resetForm = () => {
     setEditingQr(null);
-    setQrName(''); setMaxAmount(''); setFeeRate('');
-    setFeeRateL1(''); setFeeRateL2(''); setFeeRateL3('');
-    setNote(''); setMainImageFile(null); setQrImageFile(null);
+    setMaxAmount('');
+    setMainImageFile(null); setQrImageFile(null);
   };
 
   const handleSubmit = async (e) => {
@@ -124,7 +111,7 @@ const AccountantQRManager = () => {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Ảnh mã QR (để trống nếu không đổi)</label>
-              <input type="file" accept="image/*" onChange={(e) => setQrImageFile(e.target.files[0])} />
+              <input type="file" accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp" onChange={(e) => setQrImageFile(e.target.files[0])} />
             </div>
             <div className="form-group">
               <label>Hạn mức tối đa (VNĐ)</label>

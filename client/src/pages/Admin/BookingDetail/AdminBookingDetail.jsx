@@ -431,8 +431,7 @@ const AdminBookingDetail = () => {
               <label className="staff-file-upload-box">
                 <input 
                   type="file" 
-                  accept="image/*" 
-                  multiple 
+                  accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp" 
                   onChange={handleStaffFileChange}
                   hidden 
                 />

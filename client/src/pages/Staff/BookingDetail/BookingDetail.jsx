@@ -157,25 +157,6 @@ const BookingDetail = () => {
     }
   };
 
-  const handleUpdateValidity = async (isValid) => {
-    if (!booking) return;
-    setConfirmModal({ isOpen: true, value: isValid });
-  };
-
-  const confirmUpdateValidity = async () => {
-    const isValid = confirmModal.value;
-    setConfirmModal({ isOpen: false, value: null });
-    setUpdating(true);
-    try {
-      await api.patch(`/bookings/${booking.id}/validity`, { is_valid: isValid });
-      await fetchDetail();
-    } catch {
-      // Toast handled by interceptor.
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   if (loading) return <div className="booking-detail-loading">Đang tải...</div>;
   if (!booking) return <div className="booking-detail-loading">Không tìm thấy đơn</div>;
 
@@ -326,8 +307,7 @@ const BookingDetail = () => {
                 <label className="staff-file-upload-box">
                   <input 
                     type="file" 
-                    multiple 
-                    accept="image/*"
+                    accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
                     onChange={handleStaffFileChange}
                     disabled={updating || !isAssignedStaff}
                   />

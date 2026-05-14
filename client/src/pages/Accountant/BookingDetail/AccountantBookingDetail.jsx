@@ -387,8 +387,7 @@ const AccountantBookingDetail = () => {
                           <input
                             type="file"
                             hidden
-                            multiple
-                            accept="image/*"
+                            accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
                             onChange={handleFileChange}
                           />
                           <Upload size={22} />

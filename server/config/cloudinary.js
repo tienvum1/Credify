@@ -12,7 +12,8 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'the-tin-dung-qrs',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    // Cho phép tất cả định dạng ảnh để tránh lỗi trên các dòng máy khác nhau
+    allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'heic', 'heif', 'gif', 'bmp'],
     transformation: [{ quality: 'auto:best', fetch_format: 'auto' }]
   }
 });

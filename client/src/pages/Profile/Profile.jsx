@@ -46,7 +46,7 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileData = async () => {
       try {
         const res = await api.get('/auth/me');
         setUser(res.data.user);
@@ -54,6 +54,8 @@ const Profile = () => {
           full_name: res.data.user.full_name || '',
           phone: res.data.user.phone || ''
         });
+        // Sau khi có profile thì lấy danh sách ngân hàng
+        await fetchBankAccounts();
       } catch (err) {
         console.error('Lỗi khi lấy thông tin profile:', err);
         toast.error('Không thể tải thông tin cá nhân');
@@ -61,8 +63,7 @@ const Profile = () => {
         setLoading(false);
       }
     };
-    fetchProfile();
-    fetchBankAccounts();
+    fetchProfileData();
   }, []);
 
   const handleOpenBankModal = (bank = null) => {
@@ -546,18 +547,19 @@ const Profile = () => {
                     <label className="qr-upload-box">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*, .heic, .heif, .jpg, .jpeg, .png, .webp"
                         onChange={(e) => {
                           const file = e.target.files[0];
-                          if (!file) return;
-                          setBankQrFile(file);
-                          setBankQrPreview(URL.createObjectURL(file));
+                          if (file) {
+                            setBankQrFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => setBankQrPreview(reader.result);
+                            reader.readAsDataURL(file);
+                          }
                         }}
                       />
-                      <div className="qr-upload-placeholder">
-                        <span className="plus-icon">+</span>
-                        <span>Tải ảnh QR</span>
-                      </div>
+                      <Plus size={24} />
+                      <span>Tải ảnh QR</span>
                     </label>
                   )}
                 </div>

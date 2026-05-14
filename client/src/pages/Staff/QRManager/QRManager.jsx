@@ -350,11 +350,11 @@ const StaffQRManager = () => {
               </div>
               <div className="form-group">
                 <label>Ảnh đại diện (hiển thị ở Card ngoài):</label>
-                <input type="file" onChange={(e) => setMainImageFile(e.target.files[0])} required={!editingQr} />
+                <input type="file" accept="image/*" onChange={(e) => setMainImageFile(e.target.files[0])} required={!editingQr} />
               </div>
               <div className="form-group">
                 <label>Ảnh mã QR (khách quét):</label>
-                <input type="file" onChange={(e) => setQrImageFile(e.target.files[0])} required={!editingQr} />
+                <input type="file" accept="image/*" onChange={(e) => setQrImageFile(e.target.files[0])} required={!editingQr} />
               </div>
               <div className="form-group">
                 <label>Hạn mức tối đa:</label>
