@@ -161,17 +161,17 @@ const QRDetail = () => {
         {/* ── Thông tin QR ── */}
         <div className="qr-info-card">
           <div className="qr-info-images">
-            {qr.qr_image && (
-              <div className="qr-info-img-wrap" onClick={() => setLightbox(qr.qr_image)}>
-                <img src={qr.qr_image} alt="Mã QR" />
-                <span className="img-label">Quét để thanh toán</span>
+            {qr.main_image && (
+              <div className="qr-info-img-wrap" onClick={() => setLightbox(qr.main_image)}>
+                <img src={qr.main_image} alt="QR đại diện" />
+                <span className="img-label">Thông tin thẻ QR</span>
               </div>
             )}
           </div>
 
           <div className="qr-info-details">
             <h2 className="qr-info-name">{qr.name || `QR #${qr.id}`}</h2>
-
+            
             <div className="qr-info-rows">
               <div className="qr-info-row">
                 <span className="qr-info-label">Hạn mức / lần</span>
@@ -286,6 +286,8 @@ const QRDetail = () => {
                 Giới hạn chuyển 1 lần: {Math.round(computed.maxAmountNumber).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} VNĐ
               </div>
             )}
+
+
 
             <div className="order-summary">
               <div className="row">

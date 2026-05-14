@@ -293,6 +293,7 @@ const initDB = async () => {
       if (!bColNames.includes('confirmed_at')) await connection.query("ALTER TABLE bookings ADD COLUMN confirmed_at TIMESTAMP NULL");
       if (bColNames.includes('completed_at')) await connection.query("ALTER TABLE bookings DROP COLUMN completed_at");
       if (bColNames.includes('qr_name')) await connection.query("ALTER TABLE bookings DROP COLUMN qr_name");
+      if (!bColNames.includes('ncb_journal_number')) await connection.query("ALTER TABLE bookings ADD COLUMN ncb_journal_number VARCHAR(50) NULL UNIQUE AFTER customer_paid_note");
     } catch (err) { console.error('Lỗi migration bookings columns:', err.message); }
 
     // bookings — đảm bảo ENUM accountant_status đủ giá trị
@@ -306,9 +307,8 @@ const initDB = async () => {
     // qrs — thêm base_fee_rate
     try { await connection.query("ALTER TABLE qrs ADD COLUMN base_fee_rate DECIMAL(5,2) DEFAULT 0 AFTER max_amount_per_trans"); } catch {}
 
-    // bookings — thêm base_fee_rate, base_fee_amount
-    try { await connection.query("ALTER TABLE bookings ADD COLUMN base_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER transfer_amount"); } catch {}
-    try { await connection.query("ALTER TABLE bookings ADD COLUMN base_fee_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER base_fee_rate"); } catch {}
+    // bookings — thêm ncb_journal_number để tránh duplicate khi auto-match
+    try { await connection.query("ALTER TABLE bookings ADD COLUMN ncb_journal_number VARCHAR(50) NULL UNIQUE AFTER customer_paid_note"); } catch {}
 
     console.log('Database đã sẵn sàng');
     connection.release();

@@ -173,11 +173,6 @@ const AdminBookingDetail = () => {
     }
   };
 
-  const handleReject = async () => {
-    if (!booking) return;
-    setRejectModal({ isOpen: true, note: '' });
-  };
-
   const confirmReject = async () => {
     if (!rejectModal.note.trim()) {
       toast.error('Vui lòng nhập lý do từ chối');
@@ -325,6 +320,7 @@ const AdminBookingDetail = () => {
                   >
                     KHÔNG
                   </button>
+
                   {booking.is_valid === null && <span className="validity-hint">(Chưa xác nhận)</span>}
                   {booking.is_valid !== null && <span className="validity-hint confirmed">✓ Đã xác nhận: {booking.is_valid === 'yes' ? 'CÓ' : 'KHÔNG'}</span>}
                 </div>

@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Users, Shield, Settings, Home, 
+  Shield, Home, 
   ChevronLeft,
   LogOut, Bell, QrCode, CreditCard,
   TrendingUp, ReceiptEuro

@@ -584,6 +584,15 @@
     background-color: #f8fafc;
     cursor: pointer;
   }
+
+  .order-hint {
+    font-size: 11px;
+    color: #ef4444;
+    margin-top: -8px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    padding-left: 2px;
+  }
 }
 
 .order-summary {
