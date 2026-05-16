@@ -95,7 +95,8 @@ const register = async (req, res) => {
     );
 
     // Gửi email xác nhận
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email/${verificationToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://credifyapp.site';
+    const verificationUrl = `${frontendUrl}/verify-email/${verificationToken}`;
 
     await sendEmail({
       to: email,
@@ -263,7 +264,8 @@ const forgotPassword = async (req, res) => {
       [token, expires, email]
     );
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://credifyapp.site';
+    const resetUrl = `${frontendUrl}/reset-password/${token}`;
     
     // Gửi email khôi phục mật khẩu
     await sendEmail({
