@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const pool = require("../config/db").pool;
 const { createNotification } = require("../utils/notificationHelper");
+const { sendTelegramMessage } = require("../utils/telegram");
 
 const generateCode = () => {
   if (crypto.randomUUID) return crypto.randomUUID();
@@ -266,6 +267,16 @@ const submitCustomerPaid = async (req, res) => {
         }
       }).catch(err => console.error("Lỗi lấy danh sách staff để gửi thông báo:", err));
     }
+
+    // Gửi thông báo Telegram khi khách nộp bill
+    const telegramMsg = `💸 <b>ĐƠN HÀNG MỚI</b>\n` +
+      `------------------------\n` +
+      `📝 Mã đơn: <code>${booking.code.slice(-6)}</code>\n` +
+      `💰 Số tiền: <b>${Math.round(booking.transfer_amount).toLocaleString('vi-VN')} VNĐ</b>\n` +
+      `------------------------\n` +
+      `📸 <i>Đã đính kèm ảnh bill. Vui lòng xác nhận!</i>`;
+    
+    sendTelegramMessage(telegramMsg);
 
     const [rows] = await pool.query(
       "SELECT * FROM bookings WHERE id = ? LIMIT 1",
