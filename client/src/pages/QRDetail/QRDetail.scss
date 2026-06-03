@@ -105,7 +105,9 @@
         }
 
         &.note-row {
+          flex-direction: column;
           align-items: flex-start;
+          gap: 6px;
         }
 
         .qr-info-label {
@@ -135,8 +137,9 @@
             color: #475569;
             font-weight: 500;
             font-size: 13px;
-            text-align: right;
+            text-align: left;
             line-height: 1.5;
+            width: 100%;
           }
         }
       }
